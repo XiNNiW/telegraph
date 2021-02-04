@@ -1,0 +1,6 @@
+[submodule "algae"]
+	path = algae
+	url = https://github.com/XiNNiW/algae.git
+[submodule "vst3sdk"]
+	path = vst3sdk
+	url = https://github.com/steinbergmedia/vst3sdk.git
