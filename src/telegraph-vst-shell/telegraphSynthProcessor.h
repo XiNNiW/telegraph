@@ -3,7 +3,8 @@
 #pragma once
 
 #include "mdaBaseProcessor.h"
-#include <dsp.h>
+#include <algae.h>
+#include <telegraph_core.h>
 
 namespace Steinberg {
 namespace Vst {
@@ -21,6 +22,8 @@ using algae::dsp::core::control::ramp_t;
 using algae::dsp::core::control::update_adsr;
 using algae::dsp::core::control::update_ad;
 using algae::dsp::core::oscillator::noise;
+using algae::dsp::core::oscillator::phasor_t;
+using algae::dsp::core::oscillator::update_phasor;
 class TelegraphSynthProcessor : public BaseProcessor
 {
 public:
@@ -32,6 +35,7 @@ public:
 	tresult PLUGIN_API initialize (FUnknown* context) SMTG_OVERRIDE;
 	tresult PLUGIN_API terminate () SMTG_OVERRIDE;
 	tresult PLUGIN_API setActive (TBool state) SMTG_OVERRIDE;
+	static const int NumberOfParameters = 24;
 
 	void doProcessing (ProcessData& data) SMTG_OVERRIDE;
 
@@ -42,7 +46,7 @@ public:
 	void setCurrentProgramNormalized (ParamValue val) SMTG_OVERRIDE;
 
 	enum {
-		kNumPrograms = 52
+		kNumPrograms = 2
 	};
 	
 	static float programParams[kNumPrograms][24];
@@ -59,31 +63,7 @@ protected:
 
 	struct VOICE  //voice state
 	{
-		// float  period;
-		// float  p;    //sinc position
-		// float  pmax; //loop length
-		// float  dp;   //delta
-		// float  sin0; //sine osc
-		// float  sin1;
-		// float  sinx;
-		// float  dc;   //dc offset
 
-		// float  detune;
-		// float  p2;    //sinc position
-		// float  pmax2; //loop length
-		// float  dp2;   //delta
-		// float  sin02; //sine osc
-		// float  sin12;
-		// float  sinx2;
-		// float  dc2;   //dc offset
-
-		// float  fc;  //filter cutoff root
-		// float  ff;  //filter cutoff
-		// float  f0;  //filter buffers
-		// float  f1;
-		// float  f2;
-
-		// float  saw;
 		float  vca;  //current level  ///eliminate osc1 level when separate amp & filter envs?
 		float  env;  //envelope
 		float  att;  //attack
@@ -94,9 +74,6 @@ protected:
 		float  fenvd;
 		float  fenvl;
 
-		// float  lev;  //osc levels
-		// float  lev2;
-		// float  target; //period target
 		int32  note; //remember what note triggered this
 		bool  noteOn; //remember what note triggered this
 		int32 noteID;	// SNA addition
@@ -104,11 +81,9 @@ protected:
 		float snaVolume;// SNA addition
 		float snaPanLeft;	// SNA addition
 		float snaPanRight;	// SNA addition
-		vcf_t<double> resonatorState;
-		onepole_t<double, double> resDCblock;
-		ramp_t<double> exciterEnvState;
-		double exciterState;
-		double feedbackGain;
+
+		telegraph::voice_t<double> vox;
+
 	};
 
 	enum {
@@ -124,6 +99,7 @@ protected:
 	///global internal variables
 	int32 sustain, activevoices;
 	VOICE voice[NVOICES];
+	telegraph::params_t<double> parameters;
 
 	float semi, cent;
 	float tune, detune;

@@ -1,5 +1,3 @@
-
-
 #include "telegraphSynthController.h"
 
 namespace Steinberg {
@@ -40,39 +38,45 @@ tresult PLUGIN_API TelegraphSynthController::initialize (FUnknown* context)
 		parameters.addParameter (presetParam);
 
 		ParamID pid = 0;
-		parameters.addParameter (USTRING("OSC Mix"), USTRING(""), 0, 0.15, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("OSC Tune"), USTRING(""), 0, 0.6, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("OSC Fine"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Resonator Q"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Resonator Chaos"), USTRING(""), 0, 0.99, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Amp Attack"), USTRING(""), 0, 0.01, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Amp Decay"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Amp Sustain"), USTRING(""), 0, 0.777, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Amp Release"), USTRING(""), 0, 0.25, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Exciter Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Exciter Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
 
-		auto* glideModeParam = new IndexedParameter (USTRING("Glide"), nullptr, 5, 0, ParameterInfo::kCanAutomate | ParameterInfo::kIsList, pid++);
-		glideModeParam->setIndexString (0, UString128("Poly"));
-		glideModeParam->setIndexString (1, UString128("Poly-Legato"));
-		glideModeParam->setIndexString (2, UString128("Poly-Glide"));
-		glideModeParam->setIndexString (3, UString128("Mono"));
-		glideModeParam->setIndexString (4, UString128("Mono-Legato"));
-		glideModeParam->setIndexString (5, UString128("Mono-Glide"));
-		parameters.addParameter (glideModeParam);
 
-		parameters.addParameter (USTRING("Gld Rate"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Gld Bend"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Freq"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Reso"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Env"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF LFO"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Vel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Att"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Dec"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Sus"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("VCF Rel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("ENV Att"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("ENV Dec"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("ENV Sus"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("ENV Rel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("LFO Rate"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Vibrato"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Noise"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Octave"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Tuning"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// auto* glideModeParam = new IndexedParameter (USTRING("Glide"), nullptr, 5, 0, ParameterInfo::kCanAutomate | ParameterInfo::kIsList, pid++);
+		// glideModeParam->setIndexString (0, UString128("Poly"));
+		// glideModeParam->setIndexString (1, UString128("Poly-Legato"));
+		// glideModeParam->setIndexString (2, UString128("Poly-Glide"));
+		// glideModeParam->setIndexString (3, UString128("Mono"));
+		// glideModeParam->setIndexString (4, UString128("Mono-Legato"));
+		// glideModeParam->setIndexString (5, UString128("Mono-Glide"));
+		// parameters.addParameter (glideModeParam);
+
+		// parameters.addParameter (USTRING("Gld Rate"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("Gld Bend"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Freq"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Reso"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Env"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF LFO"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Vel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Att"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Dec"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Sus"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("VCF Rel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("ENV Att"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("ENV Dec"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("ENV Sus"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("ENV Rel"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("LFO Rate"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("Vibrato"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("Noise"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("Octave"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		// parameters.addParameter (USTRING("Tuning"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
 
 		midiCCParamID[kCtrlModWheel] = kModWheelParam;
 		parameters.addParameter (USTRING("Mod Wheel"), USTRING(""), 0, 0, 0, kModWheelParam);
@@ -90,58 +94,61 @@ tresult PLUGIN_API TelegraphSynthController::initialize (FUnknown* context)
 	
 
 		int32 i = 0;
-		presetParam->setIndexString (i++, UString128("5th Sweep Pad"));
-		presetParam->setIndexString (i++, UString128("Echo Pad [SA]"));
-		presetParam->setIndexString (i++, UString128("Space Chimes [SA]"));
-		presetParam->setIndexString (i++, UString128("Solid Backing"));
-		presetParam->setIndexString (i++, UString128("Velocity Backing [SA]"));
-		presetParam->setIndexString (i++, UString128("Rubber Backing [ZF]"));
-		presetParam->setIndexString (i++, UString128("808 State Lead"));
-		presetParam->setIndexString (i++, UString128("Mono Glide"));
-		presetParam->setIndexString (i++, UString128("Detuned Techno Lead"));
-		presetParam->setIndexString (i++, UString128("Hard Lead [SA]"));
-		presetParam->setIndexString (i++, UString128("Bubble"));
-		presetParam->setIndexString (i++, UString128("Monosynth"));
-		presetParam->setIndexString (i++, UString128("Moogcury Lite"));
-		presetParam->setIndexString (i++, UString128("Gangsta Whine"));
-		presetParam->setIndexString (i++, UString128("Higher Synth [ZF]"));
-		presetParam->setIndexString (i++, UString128("303 Saw Bass"));
-		presetParam->setIndexString (i++, UString128("303 Square Bass"));
-		presetParam->setIndexString (i++, UString128("Analog Bass"));
-		presetParam->setIndexString (i++, UString128("Analog Bass 2"));
-		presetParam->setIndexString (i++, UString128("Low Pulses"));
-		presetParam->setIndexString (i++, UString128("Sine Infra-Bass"));
-		presetParam->setIndexString (i++, UString128("Wobble Bass [SA]"));
-		presetParam->setIndexString (i++, UString128("Squelch Bass"));
-		presetParam->setIndexString (i++, UString128("Rubber Bass [ZF]"));
-		presetParam->setIndexString (i++, UString128("Soft Pick Bass"));
-		presetParam->setIndexString (i++, UString128("Fretless Bass"));
-		presetParam->setIndexString (i++, UString128("Whistler"));
-		presetParam->setIndexString (i++, UString128("Very Soft Pad"));
-		presetParam->setIndexString (i++, UString128("Pizzicato"));
-		presetParam->setIndexString (i++, UString128("Synth Strings"));
-		presetParam->setIndexString (i++, UString128("Synth Strings 2"));
-		presetParam->setIndexString (i++, UString128("Leslie Organ"));
-		presetParam->setIndexString (i++, UString128("Click Organ"));
-		presetParam->setIndexString (i++, UString128("Hard Organ"));
-		presetParam->setIndexString (i++, UString128("Bass Clarinet"));
-		presetParam->setIndexString (i++, UString128("Trumpet"));
-		presetParam->setIndexString (i++, UString128("Soft Horn"));
-		presetParam->setIndexString (i++, UString128("Brass Section"));
-		presetParam->setIndexString (i++, UString128("Synth Brass"));
-		presetParam->setIndexString (i++, UString128("Detuned Syn Brass [ZF]"));
-		presetParam->setIndexString (i++, UString128("Power PWM"));
-		presetParam->setIndexString (i++, UString128("Water Velocity [SA]"));
-		presetParam->setIndexString (i++, UString128("Ghost [SA]"));
-		presetParam->setIndexString (i++, UString128("Soft E.Piano"));
-		presetParam->setIndexString (i++, UString128("Thumb Piano"));
-		presetParam->setIndexString (i++, UString128("Steel Drums [ZF]"));
-		presetParam->setIndexString (i++, UString128("Car Horn"));
-		presetParam->setIndexString (i++, UString128("Helicopter"));
-		presetParam->setIndexString (i++, UString128("Arctic Wind"));
-		presetParam->setIndexString (i++, UString128("Thip"));
-		presetParam->setIndexString (i++, UString128("Synth Tom"));
-		presetParam->setIndexString (i++, UString128("Squelchy Frog"));
+		presetParam->setIndexString (i++, UString128("INIT"));
+		presetParam->setIndexString (i++, UString128("INIT2"));
+		// int32 i = 0;
+		// presetParam->setIndexString (i++, UString128("5th Sweep Pad"));
+		// presetParam->setIndexString (i++, UString128("Echo Pad [SA]"));
+		// presetParam->setIndexString (i++, UString128("Space Chimes [SA]"));
+		// presetParam->setIndexString (i++, UString128("Solid Backing"));
+		// presetParam->setIndexString (i++, UString128("Velocity Backing [SA]"));
+		// presetParam->setIndexString (i++, UString128("Rubber Backing [ZF]"));
+		// presetParam->setIndexString (i++, UString128("808 State Lead"));
+		// presetParam->setIndexString (i++, UString128("Mono Glide"));
+		// presetParam->setIndexString (i++, UString128("Detuned Techno Lead"));
+		// presetParam->setIndexString (i++, UString128("Hard Lead [SA]"));
+		// presetParam->setIndexString (i++, UString128("Bubble"));
+		// presetParam->setIndexString (i++, UString128("Monosynth"));
+		// presetParam->setIndexString (i++, UString128("Moogcury Lite"));
+		// presetParam->setIndexString (i++, UString128("Gangsta Whine"));
+		// presetParam->setIndexString (i++, UString128("Higher Synth [ZF]"));
+		// presetParam->setIndexString (i++, UString128("303 Saw Bass"));
+		// presetParam->setIndexString (i++, UString128("303 Square Bass"));
+		// presetParam->setIndexString (i++, UString128("Analog Bass"));
+		// presetParam->setIndexString (i++, UString128("Analog Bass 2"));
+		// presetParam->setIndexString (i++, UString128("Low Pulses"));
+		// presetParam->setIndexString (i++, UString128("Sine Infra-Bass"));
+		// presetParam->setIndexString (i++, UString128("Wobble Bass [SA]"));
+		// presetParam->setIndexString (i++, UString128("Squelch Bass"));
+		// presetParam->setIndexString (i++, UString128("Rubber Bass [ZF]"));
+		// presetParam->setIndexString (i++, UString128("Soft Pick Bass"));
+		// presetParam->setIndexString (i++, UString128("Fretless Bass"));
+		// presetParam->setIndexString (i++, UString128("Whistler"));
+		// presetParam->setIndexString (i++, UString128("Very Soft Pad"));
+		// presetParam->setIndexString (i++, UString128("Pizzicato"));
+		// presetParam->setIndexString (i++, UString128("Synth Strings"));
+		// presetParam->setIndexString (i++, UString128("Synth Strings 2"));
+		// presetParam->setIndexString (i++, UString128("Leslie Organ"));
+		// presetParam->setIndexString (i++, UString128("Click Organ"));
+		// presetParam->setIndexString (i++, UString128("Hard Organ"));
+		// presetParam->setIndexString (i++, UString128("Bass Clarinet"));
+		// presetParam->setIndexString (i++, UString128("Trumpet"));
+		// presetParam->setIndexString (i++, UString128("Soft Horn"));
+		// presetParam->setIndexString (i++, UString128("Brass Section"));
+		// presetParam->setIndexString (i++, UString128("Synth Brass"));
+		// presetParam->setIndexString (i++, UString128("Detuned Syn Brass [ZF]"));
+		// presetParam->setIndexString (i++, UString128("Power PWM"));
+		// presetParam->setIndexString (i++, UString128("Water Velocity [SA]"));
+		// presetParam->setIndexString (i++, UString128("Ghost [SA]"));
+		// presetParam->setIndexString (i++, UString128("Soft E.Piano"));
+		// presetParam->setIndexString (i++, UString128("Thumb Piano"));
+		// presetParam->setIndexString (i++, UString128("Steel Drums [ZF]"));
+		// presetParam->setIndexString (i++, UString128("Car Horn"));
+		// presetParam->setIndexString (i++, UString128("Helicopter"));
+		// presetParam->setIndexString (i++, UString128("Arctic Wind"));
+		// presetParam->setIndexString (i++, UString128("Thip"));
+		// presetParam->setIndexString (i++, UString128("Synth Tom"));
+		// presetParam->setIndexString (i++, UString128("Squelchy Frog"));
 	}
 	return res;
 }
@@ -159,7 +166,7 @@ tresult PLUGIN_API TelegraphSynthController::setParamNormalized (ParamID tag, Pa
 	if (res == kResultOk && tag == kPresetParam) // preset change
 	{
 		int32 program = parameters.getParameter (tag)->toPlain (value);
-		for (int32 i = 0; i < 24; i++)
+		for (int32 i = 0; i < TelegraphSynthProcessor::NumberOfParameters; i++)
 		{
 			BaseController::setParamNormalized (i, TelegraphSynthProcessor::programParams[program][i]);
 		}

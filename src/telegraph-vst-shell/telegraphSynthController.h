@@ -22,7 +22,7 @@ public:
 	tresult PLUGIN_API getParamValueByString (ParamID tag, TChar* string, ParamValue& valueNormalized) SMTG_OVERRIDE;
 
 
-	static FUnknown* createInstance (void*) { return (IEditController*)new TelegraphSynthController; }
+	static FUnknown* createInstance (void*) { return (IEditController*) new TelegraphSynthController; }
 	static FUID uid;
 };
 

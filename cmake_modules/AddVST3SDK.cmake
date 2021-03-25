@@ -24,7 +24,17 @@ include(SMTG_AddSubDirectories)
 include_directories(${VST3_SDK_ROOT})
 
 set(VST_SDK TRUE)
+
 smtg_add_subdirectories()
+# file(GLOB subDirectories RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${VST3_SDK_ROOT}/*)
+# foreach(dir ${subDirectories})
+#     if(IS_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${dir}")
+#         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${dir}/CMakeLists.txt")
+#             add_subdirectory(${dir})
+#         endif()
+#     endif()
+# endforeach(dir)
+
 set(public_sdk_SOURCE_DIR ${SDK_ROOT}/public.sdk)
 # set(pluginterfaces_SOURCE_DIR ${SDK_ROOT}/pluginterfaces)
 
