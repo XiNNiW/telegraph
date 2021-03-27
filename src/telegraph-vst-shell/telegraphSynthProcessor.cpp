@@ -241,8 +241,6 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 				oL = oR = 0.0f;
 				float oneSample = 0;
 
-				
-
 				if (--k<0)
 				{
 					// control rate update here
@@ -251,7 +249,8 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 
 				for(v=0; v<NVOICES; v++)  //for each voice
 				{ 
-
+					V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
+					oneSample = V->vox.output;
 					
 					e = V->env;
 					if (e > SILENCE)
@@ -259,8 +258,7 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 						
 						
 						V->env += V->envd * (V->envl - V->env);
-						V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
-						oneSample = V->vox.output;
+						
 
 						if (k==KMAX) //filter freq update at LFO rate
 						{
