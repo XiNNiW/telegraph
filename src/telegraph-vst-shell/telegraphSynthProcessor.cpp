@@ -8,15 +8,11 @@ namespace Steinberg {
 namespace Vst {
 namespace mda {
 
-#define NPARAMS  24      //number of parameters
-#define SILENCE  0.001f  //voice choking
-#define PI       3.1415926535897932f
-#define TWOPI    6.2831853071795864f
-#define ANALOG   0.002f  //oscillator drift
+
 
 float TelegraphSynthProcessor::programParams[kNumPrograms][NPARAMS] = { 
-	{1.0f, 0.37f, 0.25f, 0.3f, 0.32f, 0.5f, 0.9f, 0.6f, 0.12f, 0.0f, 0.5f, 0.9f, 0.89f, 0.9f, 0.73f, 0.0f, 0.5f, 1.0f, 0.71f, 0.81f, 0.65f, 0.0f, 0.5f, 0.5f},
-	{0.88f, 0.51f, 0.5f, 0.0f, 0.49f, 0.5f, 0.46f, 0.76f, 0.69f, 0.1f, 0.69f, 1.0f, 0.86f, 0.76f, 0.57f, 0.3f, 0.8f, 0.68f, 0.66f, 0.79f, 0.13f, 0.25f, 0.45f, 0.5f},
+	{1.0f, 0.37f, 0.25f, 0.3f, 0.32f, 0.5f, 0.9f, 0.6f, 0.12f, 0.0f, 0.5f, 0.9f, 0.89f, 0.9f, 0.73f, 0.0f, 0.5f, 1.0f, 0.71f, 0.81f, 0.65f, 0.0f, 0.5f, 0.5f, 0.0f, 0.1f},
+	{0.88f, 0.51f, 0.5f, 0.0f, 0.49f, 0.5f, 0.46f, 0.76f, 0.69f, 0.1f, 0.69f, 1.0f, 0.86f, 0.76f, 0.57f, 0.3f, 0.8f, 0.68f, 0.66f, 0.79f, 0.13f, 0.25f, 0.45f, 0.5f, 0.0f, 0.1f},
 	// {0.88f, 0.51f, 0.5f, 0.16f, 0.49f, 0.5f, 0.49f, 0.82f, 0.66f, 0.08f, 0.89f, 0.85f, 0.69f, 0.76f, 0.47f, 0.12f, 0.22f, 0.55f, 0.66f, 0.89f, 0.34f, 0.0f, 1.0f, 0.5f},
 	// {1.0f, 0.26f, 0.14f, 0.0f, 0.35f, 0.5f, 0.3f, 0.25f, 0.7f, 0.0f, 0.63f, 0.0f, 0.35f, 0.0f, 0.25f, 0.0f, 0.5f, 1.0f, 0.3f, 0.81f, 0.5f, 0.5f, 0.5f, 0.5f},
 	// {0.41f, 0.5f, 0.79f, 0.0f, 0.08f, 0.32f, 0.49f, 0.01f, 0.34f, 0.0f, 0.93f, 0.61f, 0.87f, 1.0f, 0.93f, 0.11f, 0.48f, 0.98f, 0.32f, 0.81f, 0.5f, 0.0f, 0.5f, 0.5f},
@@ -110,11 +106,8 @@ tresult PLUGIN_API TelegraphSynthProcessor::initialize (FUnknown* context)
 		for(int32 v=0; v<NVOICES; v++) 
 		{
 			memset (&voice[v], 0, sizeof (VOICE));
-			// voice[v].dp   = voice[v].dp2   = 1.0f;
-			// voice[v].saw  = voice[v].p     = voice[v].p2    = 0.0f;
 			voice[v].env  = voice[v].envd  = voice[v].envl  = 0.0f;
 			voice[v].fenv = voice[v].fenvd = voice[v].fenvl = 0.0f;
-			// voice[v].f0   = voice[v].f1    = voice[v].f2    = 0.0f;
 			voice[v].note = 0;
 			voice[v].vox = telegraph::initVoice<double>(voice[v].vox, getSampleRate());
 		}
@@ -249,16 +242,14 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 
 				for(v=0; v<NVOICES; v++)  //for each voice
 				{ 
-					V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
-					oneSample = V->vox.output;
-					
 					e = V->env;
-					if (e > SILENCE)
+					// if (e > SILENCE)
+					if (V->vox.amp_gate || V->vox.amp_envelope.env.value > SILENCE)
 					{ //Sinc-Loop Oscillator
-						
-						
-						V->env += V->envd * (V->envl - V->env);
-						
+						V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
+						oneSample = V->vox.output;
+
+						// V->env += V->envd * (V->envl - V->env);
 
 						if (k==KMAX) //filter freq update at LFO rate
 						{
@@ -267,14 +258,12 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 							V->fenv += V->fenvd * (V->fenvl - V->fenv);
 							if ((V->fenv+V->fenvl)>3.0f) { V->fenvd=fdec; V->fenvl=fsus; }
 
-
 						}
-
 						
-						oneSample = V->env * oneSample * V->snaVolume;
+						oneSample = oneSample;// * V->snaVolume;
 						
-						oL += oneSample * V->snaPanLeft;
-						oR += oneSample * V->snaPanRight;
+						oL += oneSample/2.0; //* V->snaPanLeft;
+						oR += oneSample/2.0; //* V->snaPanRight;
 					}
 					V++;
 				}
@@ -295,12 +284,10 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 		activevoices = NVOICES;
 		for(v=0; v<NVOICES; v++)
 		{
-			if (voice[v].env<SILENCE)  //choke voices
+			if (voice[v].vox.amp_envelope.env.value<SILENCE)  //choke voices
 			{
 				voice[v].env = voice[v].envl = 0.0f;
-				// voice[v].f0 = voice[v].f1 = voice[v].f2 = 0.0f;
 				voice[v].noteOn = false;
-				// voice[v].exciterEnvState = ramp_t<double>();
 				voice[v].vox = telegraph::resetVoice<double>(voice[v].vox);
 				activevoices--;
 			}
@@ -358,225 +345,48 @@ void TelegraphSynthProcessor::processEvents (IEventList* events)
 //-----------------------------------------------------------------------------
 void TelegraphSynthProcessor::noteOn (int32 note, int32 velocity, int32 noteID)
 {
-	float p, l=100.0f; //louder than any envelope!
-	int32  v=0, tmp, held=0;
-
-	bool polyMode = (mode < 3);
-	bool _glide = !(mode == 0 || mode == 3);
-	bool legato = (mode == 1 || mode == 5);
+	float l=100.0f; //louder than any envelope!
 
 	if (velocity>0) //note on
 	{
-		
-		if (veloff) velocity = 80;
 
-		if (!polyMode) //monophonic
+		int32  v=0;
+		for(int tmp=0; tmp<NVOICES; tmp++)  //replace quietest voice not in attack
 		{
-			if (voice[0].note > 0) //legato pitch change
-			{
-				for(tmp= (NVOICES-1); tmp>0; tmp--)  //queue any held notes
-				{
-					voice[tmp].note = voice[tmp - 1].note;
-				}
-				p = tune * (float)exp (-0.05776226505 * ((double)note + ANALOG * (double)v));
-				while (p<3.0f || (p * detune)<3.0f) p += p;
-				// voice[v].target = p;
-				// if ((_glide)==0) voice[v].period = p;
-				// voice[v].fc = (float)exp (filtvel * (float)(velocity - 64)) / p;
-				voice[v].env += SILENCE + SILENCE; ///was missed out below if returned?
-				voice[v].note = note;
-				voice[v].noteOn = true;
-				// voice[v].exciterEnvState = ramp_t<double>{};
-				voice[v].vox = telegraph::noteOn<double>(voice[v].vox, parameters, note, getSampleRate());
-
-				
-				voice[v].noteID = noteID;
-				voice[v].snaVolume = 1.f;
-				voice[v].snaPanLeft = voice[v].snaPanRight = 1.f;
-				voice[v].snaPitchbend = 1.f;
-				return;
-			}
+			if (voice[tmp].vox.amp_envelope.env.value<l && voice[tmp].vox.amp_envelope.env.value<2.0f) { l=voice[tmp].vox.amp_envelope.env.value;  v=tmp; }
 		}
-		else //polyphonic 
-		{
-			for(tmp=0; tmp<NVOICES; tmp++)  //replace quietest voice not in attack
-			{
-				if (voice[tmp].note > 0) held++;
-				if (voice[tmp].env<l && voice[tmp].envl<2.0f) { l=voice[tmp].env;  v=tmp; }
-			}
-		}  
-		p = tune * (float)exp (-0.05776226505 * ((double)note + ANALOG * (double)v));
-		while (p<3.0f || (p * detune)<3.0f) p += p;
-		// voice[v].target = p;
-		// voice[v].detune = detune;
-		voice[v].noteOn = true;
-		// voice[v].exciterEnvState = ramp_t<double>{};
 		voice[v].vox = telegraph::noteOn<double>(voice[v].vox, parameters, note, getSampleRate());
-
-		tmp = 0;
-		if (_glide || legato)
-		{
-			if ((_glide) || held) tmp = note - lastnote; //glide
-		}
-		// voice[v].period = p * (float)pow (1.059463094359, (double)tmp - glidedisp);
-		// if (voice[v].period<3.0f) voice[v].period = 3.0f; //limit min period
-
-		voice[v].note = lastnote = note;
-		
-		voice[v].noteID = noteID;
-
-		// voice[v].fc = (float)exp (filtvel * (float)(velocity - 64)) / p; //filter tracking
-
-		// voice[v].lev = voltrim * volume * (0.004f * (float)((velocity + 64) * (velocity + 64)) - 8.0f);
-		// voice[v].lev2 = voice[v].lev * oscmix;
-
-		if (params[20]<0.5f) //force 180 deg phase difference for PWM
-		{
-			// if (voice[v].dp>0.0f)
-			// {
-			// 	p = voice[v].pmax + voice[v].pmax - voice[v].p;
-			// 	voice[v].dp2 = -voice[v].dp;
-			// }
-			// else
-			// {
-			// 	p = voice[v].p;
-			// 	voice[v].dp2 = voice[v].dp;
-			// }
-			// voice[v].p2 = voice[v].pmax2 = p + PI * voice[v].period;
-
-			// voice[v].dc2 = 0.0f;
-			// voice[v].sin02 = voice[v].sin12 = voice[v].sinx2 = 0.0f;
-		}
-
-		if (!polyMode) //monophonic retriggering
-		{
-			voice[v].env += SILENCE + SILENCE;
-		}
-		else
-		{
-			if (params[15] < 0.28f) 
-			{
-			//  voice[v].f0 = voice[v].f1 = voice[v].f2 = 0.0f; //reset filter
-			 voice[v].env = SILENCE + SILENCE;
-			 voice[v].fenv = 0.0f;
-			}
-			else 
-				voice[v].env += SILENCE + SILENCE; //anti-glitching trick
-		}
-		voice[v].envl  = 2.0f;
-		voice[v].envd  = att;
-		voice[v].fenvl = 2.0f;
-		voice[v].fenvd = fatt;
-		voice[v].snaVolume = 1.f;
-		voice[v].snaPanLeft = voice[v].snaPanRight = 1.f;
-		voice[v].snaPitchbend = 1.f;
 	}
 	else //note off
 	{
-		
-		if ((!polyMode) && (voice[0].note==note)) //monophonic (and current note)
-		{
-			for(v= (NVOICES-1); v>0; v--) 
-			{
-				if (voice[v].note>0) held = v; //any other notes queued?
-			}
-			if (held>0)
-			{
-				voice[v].note = voice[held].note;
-				voice[held].note = 0;
-				voice[v].noteOn  = false;
-				// voice[v].exciterEnvState = ramp_t<double>{};
-				voice[v].vox = telegraph::noteOff(voice[v].vox);
 
-				p = tune * (float)exp (-0.05776226505 * ((double)voice[v].note + ANALOG * (double)v));
-				while (p<3.0f || (p * detune)<3.0f) p += p;
-				// voice[v].target = p;
-				// if ((_glide || legato)==0) voice[v].period = p;
-				// voice[v].fc = 1.0f / p;
-				
-			}
-			else
-			{
-				voice[v].envl  = 0.0f;
-				voice[v].envd  = rel;
-				voice[v].fenvl = 0.0f;
-				voice[v].fenvd = frel;
-				voice[v].note  = 0;
-				voice[v].noteOn  = false;
-				// voice[v].exciterEnvState = ramp_t<double>{};
-				voice[v].vox = telegraph::noteOff(voice[v].vox);
-			}
-		}
-		else //polyphonic
+		for(int tmp=0; tmp<NVOICES; tmp++) if (voice[tmp].vox.note==note) //any voices playing that note?
 		{
-			for(v=0; v<NVOICES; v++) if (voice[v].note==note) //any voices playing that note?
-			{
-				if (sustain==0)
-				{
-					voice[v].envl  = 0.0f;
-					voice[v].envd  = rel;
-					voice[v].fenvl = 0.0f;
-					voice[v].fenvd = frel;
-					voice[v].note  = 0;
-					voice[v].noteOn  = false;
-					voice[v].vox = telegraph::noteOff(voice[v].vox);
-					// voice[v].exciterEnvState = ramp_t<double>{};
-					// voice[v].vox = telegraph::resetVoice<double>(voice[v].vox);
-				}
-				else voice[v].note = SUSTAIN;
-			}
+			voice[tmp].vox = telegraph::noteOff(voice[tmp].vox);
 		}
+
 	}
 }
 // I think this method is used to update the synth state with the current value of the dsp params
 //-----------------------------------------------------------------------------
 void TelegraphSynthProcessor::recalculate ()
 {
-	double ifs = 1.0 / getSampleRate ();
 
-	mode = std::min<int32>(5, (int32)(params[3] * 6));
-	noisemix = params[21] * params[21];
-	voltrim = (3.2f - params[0] - 1.5f * noisemix) * (1.5f - 0.5f * params[7]);
-	noisemix *= 0.06f;
-	oscmix = params[0];
+	auto SR = getSampleRate();
 
-	semi = (float)floor(48.0f * params[1]) - 24.0f;
-	cent = 15.876f * params[2] - 7.938f;
-	cent = 0.1f * (float)floor(cent * cent * cent);
-	detune = (float)pow (1.059463094359f, - semi - 0.01f * cent);
-	tune = -23.376f - 2.0f * params[23] - 12.0f * (float)floor(params[22] * 4.9);
-	tune = getSampleRate () * (float)pow (1.059463094359f, tune);
+	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 100.0,100.0); 
+	parameters.resonator_feedback = telegraph::denormalize<double>(double(params[1]), -1.0, 1.0); 
+	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*SR; 
+	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*SR; 
+	parameters.amp_sustain = double(params[4]); 
+	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*SR;
+	parameters.feedback_attack = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 4.0,100.0)*SR;
+	parameters.feedback_decay = telegraph::denormalize_exp<double>(double(params[7]), 0.0, 4.0,100.0)*SR;
+	parameters.noise_attack = telegraph::denormalize_exp<double>(double(params[8]), 0.0, 4.0,100.0)*SR;
+	parameters.noise_decay = telegraph::denormalize_exp<double>(double(params[9]), 0.0, 4.0,100.0)*SR;
 
-	vibrato = pwmdep = 0.2f * (params[20] - 0.5f) * (params[20] - 0.5f);
-	if (params[20]<0.5f) vibrato = 0.0f;
 
-	lfoHz = (float)exp (7.0f * params[19] - 4.0f);
-	dlfo = lfoHz * (float)(ifs * TWOPI * KMAX); 
-
-	filtf = 8.0f * params[6] - 1.5f;
-	filtq  = (1.0f - params[7]) * (1.0f - params[7]); ////// + 0.02f;
-	filtlfo = 2.5f * params[9] * params[9];
-	filtenv = 12.0f * params[8] - 6.0f;
-	filtvel = 0.1f * params[10] - 0.05f;
-	if (params[10]<0.05f) { veloff = 1; filtvel = 0; } else veloff = 0;
-
-	att = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[15]));
-	dec = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[16]));
-	sus = params[17];
-	rel = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[18]));
-	if (params[18]<0.01f) rel = 0.1f; //extra fast release
-
-	ifs *= KMAX; //lower update rate...
-
-	fatt = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[11]));
-	fdec = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[12]));
-	fsus = params[13] * params[13];
-	frel = 1.0f - (float)exp (-ifs * exp (5.5 - 7.5 * params[14]));
-
-	if (params[4]<0.02f) glide = 1.0f; else
-	glide = 1.0f - (float)exp (-ifs * exp (6.0 - 7.0 * params[4]));
-	glidedisp = (6.604f * params[5] - 3.302f);
-	glidedisp *= glidedisp * glidedisp;
+	
 }
 
 }}} // namespaces

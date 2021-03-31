@@ -44,9 +44,10 @@ tresult PLUGIN_API TelegraphSynthController::initialize (FUnknown* context)
 		parameters.addParameter (USTRING("Amp Decay"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
 		parameters.addParameter (USTRING("Amp Sustain"), USTRING(""), 0, 0.777, ParameterInfo::kCanAutomate, pid++);
 		parameters.addParameter (USTRING("Amp Release"), USTRING(""), 0, 0.25, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Exciter Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Exciter Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
-
+		parameters.addParameter (USTRING("Chaos Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Chaos Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Noise Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Noise Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
 
 		// auto* glideModeParam = new IndexedParameter (USTRING("Glide"), nullptr, 5, 0, ParameterInfo::kCanAutomate | ParameterInfo::kIsList, pid++);
 		// glideModeParam->setIndexString (0, UString128("Poly"));

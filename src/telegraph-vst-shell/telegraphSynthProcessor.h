@@ -10,6 +10,12 @@ namespace Steinberg {
 namespace Vst {
 namespace mda {
 
+#define NPARAMS  26      //number of parameters
+#define SILENCE  0.001f  //voice choking
+#define PI       3.1415926535897932f
+#define TWOPI    6.2831853071795864f
+#define ANALOG   0.002f  //oscillator drift
+
 using algae::dsp::core::filter::vcf_t;
 using algae::dsp::core::filter::update_vcf;
 using algae::dsp::core::filter::onepole_t;
@@ -24,18 +30,19 @@ using algae::dsp::core::control::update_ad;
 using algae::dsp::core::oscillator::noise;
 using algae::dsp::core::oscillator::phasor_t;
 using algae::dsp::core::oscillator::update_phasor;
+
 class TelegraphSynthProcessor : public BaseProcessor
 {
 public:
 	TelegraphSynthProcessor ();
 	~TelegraphSynthProcessor ();
 	
-	int32 getVst2UniqueId () const SMTG_OVERRIDE { return 'MDAj'; }
+	int32 getVst2UniqueId () const SMTG_OVERRIDE { return 'teleg'; }
 
 	tresult PLUGIN_API initialize (FUnknown* context) SMTG_OVERRIDE;
 	tresult PLUGIN_API terminate () SMTG_OVERRIDE;
 	tresult PLUGIN_API setActive (TBool state) SMTG_OVERRIDE;
-	static const int NumberOfParameters = 24;
+	static const int NumberOfParameters = NPARAMS;
 
 	void doProcessing (ProcessData& data) SMTG_OVERRIDE;
 
@@ -49,10 +56,9 @@ public:
 		kNumPrograms = 2
 	};
 	
-	static float programParams[kNumPrograms][24];
+	static float programParams[kNumPrograms][NPARAMS];
 
-
-	static FUnknown* createInstance (void*) { return (IAudioProcessor*)new TelegraphSynthProcessor; }
+	static FUnknown* createInstance (void*) { return (IAudioProcessor*) new TelegraphSynthProcessor; }
 	static FUID uid;
 
 protected:

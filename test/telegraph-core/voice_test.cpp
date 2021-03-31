@@ -111,25 +111,25 @@ TEST(DSP_Test, SetAmpRelease) {
     ASSERT_FLOAT_EQ(5000.0, final.amp_release);
 }
 
-TEST(DSP_Test, SetExciterAttack) { 
-    telegraph::params_t<double> initial = telegraph::params_t<double>();
-    initial.exciter_attack= 100;
-    const double sample_rate = 1;
+// TEST(DSP_Test, SetExciterAttack) { 
+//     telegraph::params_t<double> initial = telegraph::params_t<double>();
+//     initial.exciter_attack= 100;
+//     const double sample_rate = 1;
     
-    telegraph::params_t<double> final = telegraph::setExciterAttack<double>(initial, 6, sample_rate);
+//     telegraph::params_t<double> final = telegraph::setExciterAttack<double>(initial, 6, sample_rate);
 
-    ASSERT_FLOAT_EQ(6000.0, final.exciter_attack);
-}
+//     ASSERT_FLOAT_EQ(6000.0, final.exciter_attack);
+// }
 
-TEST(DSP_Test, SetExciterDecay) { 
-    telegraph::params_t<double> initial = telegraph::params_t<double>();
-    initial.exciter_decay= 100;
-    const double sample_rate = 1;
+// TEST(DSP_Test, SetExciterDecay) { 
+//     telegraph::params_t<double> initial = telegraph::params_t<double>();
+//     initial.exciter_decay= 100;
+//     const double sample_rate = 1;
     
-    telegraph::params_t<double> final = telegraph::setExciterDecay<double>(initial, 7, sample_rate);
+//     telegraph::params_t<double> final = telegraph::setExciterDecay<double>(initial, 7, sample_rate);
 
-    ASSERT_FLOAT_EQ(7000.0, final.exciter_decay);
-}
+//     ASSERT_FLOAT_EQ(7000.0, final.exciter_decay);
+// }
 
 
 

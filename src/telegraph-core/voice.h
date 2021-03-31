@@ -11,7 +11,9 @@ using algae::dsp::core::filter::process_bandpass;
 using algae::dsp::core::filter::update_coefficients;
 using algae::dsp::core::filter::update_bp;
 using algae::dsp::core::filter::update_biquad;
+using algae::dsp::core::filter::dc_block_t;
 using algae::dsp::core::control::ramp_t;
+using algae::dsp::core::control::adsr_t;
 using algae::dsp::core::control::update_adsr;
 using algae::dsp::core::control::update_ad;
 using algae::dsp::core::oscillator::noise;
@@ -26,27 +28,31 @@ using algae::dsp::core::units::mtof;
 namespace telegraph{
     template<typename sample_t>
     struct voice_t {
+        int note;
         bool is_active;
         fm_bl_saw_t<sample_t, sample_t> exciter;
         ramp_t<sample_t> noise_envelope;
         ramp_t<sample_t> exciter_envelope;
         bandpass_t<sample_t> resonator;
+        dc_block_t<sample_t> dc_blocker;
         sample_t resonator_frequency;
         bool amp_gate;
-        ramp_t<sample_t> amp_envelope;
+        adsr_t<sample_t> amp_envelope;
         sample_t output;
     };
 
     template<typename sample_t>
     struct params_t {
-        sample_t resonator_q;
-        sample_t resonator_feedback;
-        int amp_attack;
-        int amp_decay;
-        sample_t amp_sustain;
-        int amp_release;
-        int exciter_attack=441;
-        int exciter_decay=44100;
+        sample_t resonator_q=1.0;
+        sample_t resonator_feedback=-1.25;
+        int amp_attack=48;
+        int amp_decay=4800;
+        sample_t amp_sustain=0.9;
+        int amp_release=48000;
+        int feedback_attack=0;
+        int feedback_decay=48000;
+        int noise_attack=48;
+        int noise_decay=4800;
     };
 
     template<typename sample_t>
@@ -55,9 +61,9 @@ namespace telegraph{
         v.amp_gate = false;
         v.exciter = algae::dsp::core::oscillator::fm_bl_saw<sample_t,sample_t>(v.exciter, 0, sampleRate);
         v.exciter_envelope = ramp_t<sample_t>();
-        v.amp_envelope = ramp_t<sample_t>();
+        v.noise_envelope = ramp_t<sample_t>();
+        v.amp_envelope = adsr_t<sample_t>();
         v.resonator = bandpass_t<sample_t>();
-        // v.resonator = update_coefficients<sample_t,sample_t>(bandpass_t<sample_t>(), 440.0, 10.0 , sampleRate);
         return v;
     }
 
@@ -66,72 +72,52 @@ namespace telegraph{
         v.is_active = false;
         v.amp_gate = false;
         v.exciter_envelope = ramp_t<sample_t>();
-        v.amp_envelope = ramp_t<sample_t>();
-        // v.resonator = bandpass_t<sample_t>();
-        // v.resonator = update_coefficients<sample_t,sample_t>(bandpass_t<sample_t>(), 440.0, 10.0 , sampleRate);
+        v.noise_envelope = ramp_t<sample_t>();
+        v.amp_envelope = adsr_t<sample_t>();
         return v;
     }
+
+    using algae::dsp::core::oscillator::sinOsc; 
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t> process(voice_t<sample_t> v, params_t<sample_t> params, frequency_t sampleRate){
 
         sample_t noise = algae::dsp::core::oscillator::noise<sample_t>();
-        
-
-        // v.exciter = process_fm_bl_saw<sample_t>(v.exciter, sampleRate);
-        // // sample_t exciter = v.exciter.output;
-        // sample_t exciter = algae::dsp::core::oscillator::sinOsc<sample_t,sample_t>(v.exciter.phasor.phase);
-        // exciter *= v.amp_envelope.value;
-
-        // sample_t resonator_input = noise + exciter + params.resonator_feedback*cos( params.resonator_feedback*M_2_PI * v.resonator.y1);
-        
-        // v.resonator = process_bandpass<sample_t>(v.resonator, resonator_input);
-
-        // // resonator_input += v.resonator.y1 + exciter + params.resonator_feedback*cos(params.resonator_feedback*  M_2_PI * v.resonator3.y1);
-        // // v.resonator2 = process_bandpass<sample_t>(v.resonator2, resonator_input);
-
-        // // resonator_input +=  v.resonator2.y1 + exciter + params.resonator_feedback*tanh( params.resonator_feedback* M_2_PI * v.resonator3.y1);
-        // // v.resonator3 = process_bandpass<sample_t>(v.resonator3, resonator_input);
-        // //wrap this in a karplus strong voice
-
-        // // chain filters in series... then in paralell
-        // // fm the filters together
-        // v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, params.amp_attack, params.amp_decay, params.amp_sustain, params.amp_release);
-        
-        // v.output = tanh(v.resonator.y1 * v.amp_envelope.value);
         sample_t sq_env = v.exciter_envelope.value * v.exciter_envelope.value;
-        noise *= v.noise_envelope.value*v.noise_envelope.value;
-        sample_t harmonic = 3.0;
-        sample_t exciter_output = noise + algae::dsp::core::oscillator::sinOsc<sample_t>(v.exciter.phasor.phase);
-        sample_t resonator_input = exciter_output + cos(sq_env * harmonic * v.resonator_frequency * -1.25 * v.resonator.y1);
+        noise *= v.noise_envelope.value * v.noise_envelope.value;
+        // sample_t exciter_output = sinOsc<sample_t>(v.exciter.phasor.phase);
+        // sample_t exciter_output = algae::dsp::core::oscillator::fm_bl_pulse<double>(v.exciter.phasor.phase, algae::dsp::core::oscillator::max_bl_modulation_index(v.resonator_frequency,v.resonator_frequency,sampleRate));
+        sample_t resonator_input = noise + v.exciter.output + sq_env * cos( params.resonator_feedback * v.resonator.y1);
         v.resonator = process_bandpass<sample_t>(v.resonator, resonator_input);
-        // v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, v.resonator_frequency+4.0*v.resonator_frequency*exciter_output, 99.0 , sampleRate);
 
-        // v.output *= v.amp_envelope.value;
-        v.exciter.phasor = update_phasor<double>(v.exciter.phasor, v.resonator_frequency, sampleRate);
+        // v.exciter.phasor = update_phasor<double>(v.exciter.phasor, v.resonator_frequency, sampleRate);
+        v.exciter = process_fm_bl_saw(v.exciter, sampleRate);
 
-        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, 0, sampleRate/10.0);
-        v.noise_envelope = update_ad<sample_t>(v.noise_envelope, sampleRate/1000.0, sampleRate/100.0);
-        v.output = tanh(v.resonator.y1);
-        v.output *= 0.666;
+        v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, params.amp_attack, params.amp_decay, params.amp_sustain, params.amp_release);
+        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, params.feedback_attack, params.feedback_decay);
+        v.noise_envelope = update_ad<sample_t>(v.noise_envelope, params.noise_attack, params.noise_decay);
+        
+        v.output = tanh(v.exciter.integrator.y1);//v.exciter.integrator.y1);//exciter_output);
+        v.output *= v.amp_envelope.env.value;
+        v.output *= 0.5;
         return v;
         
     }
 
     template<typename sample_t>
     voice_t<sample_t> noteOn(voice_t<sample_t> v, params_t<sample_t> p, sample_t note, sample_t sampleRate){
-        v.resonator_frequency = mtof<sample_t>(note);
-        v.exciter = algae::dsp::core::oscillator::setFrequency(v.exciter, v.resonator_frequency, sampleRate);
+        v.note = note;
+        sample_t freq = mtof<sample_t>(note);
+        v.resonator_frequency = freq;
+        v.exciter = algae::dsp::core::oscillator::setFrequency(v.exciter, freq, sampleRate);
         v.amp_gate = true;
         v.is_active = true;
-        // v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, 440.0, 10.0 , sampleRate);
-        sample_t q = p.resonator_q;
+        v.amp_envelope = adsr_t<sample_t>();
         v.exciter_envelope = ramp_t<sample_t>();
-        // q = 1000.0;
-        // v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, v.resonator_frequency, q , sampleRate);
-        v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, v.resonator_frequency, 100.0 , sampleRate);
-        // v.resonator2 = update_coefficients<sample_t,sample_t>(v.resonator2,v.resonator_frequency, q , sampleRate);
-        // v.resonator2 = update_coefficients<sample_t,sample_t>(v.resonator3,v.resonator_frequency, q , sampleRate);
+        v.noise_envelope = ramp_t<sample_t>();
+
+        sample_t q = p.resonator_q;
+        v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, v.resonator_frequency, p.resonator_q, sampleRate);
 
         return v;
     }
@@ -145,6 +131,13 @@ namespace telegraph{
     template<typename sample_t>
     sample_t denormalize(sample_t val, sample_t min, sample_t max){
         val = val>=0.0 && val<=1.0 ? val : 0.0;
+        return val*(max-min) + min;
+    }
+
+    template<typename sample_t>
+    sample_t denormalize_exp(sample_t val, sample_t min, sample_t max, sample_t base){
+        val = val>=0.0 && val<=1.0 ? val : 0.0;
+        val = base!=1?pow(base,val)/(base-1):val;
         return val*(max-min) + min;
     }
 
@@ -172,6 +165,18 @@ namespace telegraph{
     }
 
     using algae::dsp::core::units::msToSamples;
+
+    template<typename sample_t>
+    sample_t convertTimeParameter(sample_t param, sample_t sampleRate){
+        sample_t converted = msToSamples<sample_t,sample_t>(param, sampleRate);
+        return converted;
+    }
+
+    template<typename sample_t>
+    sample_t convertTimeParameter(sample_t amp_attack, sample_t min, sample_t max, sample_t sampleRate){
+        amp_attack = denormalize<sample_t>(amp_attack, min, max);
+        return convertTimeParameter(amp_attack, sampleRate);
+    }
 
     template<typename sample_t>
     params_t<sample_t> setAmpAttack(params_t<sample_t> v, sample_t amp_attack, sample_t sampleRate){
@@ -221,28 +226,28 @@ namespace telegraph{
         return setAmpRelease(v, amp_release, sampleRate);
     }
 
-    template<typename sample_t>
-    params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t sampleRate){
-        v.exciter_attack = msToSamples<sample_t,sample_t>(exciter_attack, sampleRate);
-        return v;
-    }
+    // template<typename sample_t>
+    // params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t sampleRate){
+    //     v.exciter_attack = msToSamples<sample_t,sample_t>(exciter_attack, sampleRate);
+    //     return v;
+    // }
 
-    template<typename sample_t>
-    params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t min, sample_t max, sample_t sampleRate){
-        exciter_attack = denormalize<sample_t>(exciter_attack, min, max);
-        return setExciterAttack(v, exciter_attack, sampleRate);
-    }
+    // template<typename sample_t>
+    // params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t min, sample_t max, sample_t sampleRate){
+    //     exciter_attack = denormalize<sample_t>(exciter_attack, min, max);
+    //     return setExciterAttack(v, exciter_attack, sampleRate);
+    // }
 
-    template<typename sample_t>
-    params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t sampleRate){
-        v.exciter_decay = msToSamples<sample_t,sample_t>(exciter_decay, sampleRate);
-        return v;
-    }
+    // template<typename sample_t>
+    // params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t sampleRate){
+    //     v.exciter_decay = msToSamples<sample_t,sample_t>(exciter_decay, sampleRate);
+    //     return v;
+    // }
 
-    template<typename sample_t>
-    params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t min, sample_t max, sample_t sampleRate){
-        exciter_decay = denormalize<sample_t>(exciter_decay,min,max);
-        return setExciterDecay(v, exciter_decay, sampleRate);
-    }
+    // template<typename sample_t>
+    // params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t min, sample_t max, sample_t sampleRate){
+    //     exciter_decay = denormalize<sample_t>(exciter_decay,min,max);
+    //     return setExciterDecay(v, exciter_decay, sampleRate);
+    // }
 
 }
