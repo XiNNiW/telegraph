@@ -88,7 +88,7 @@ protected:
 		float snaPanLeft;	// SNA addition
 		float snaPanRight;	// SNA addition
 
-		telegraph::voice_t<double> vox;
+		telegraph::voice_t<double, double> vox;
 
 	};
 

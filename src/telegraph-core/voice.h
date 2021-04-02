@@ -20,17 +20,23 @@ using algae::dsp::core::oscillator::noise;
 using algae::dsp::core::oscillator::phasor_t;
 using algae::dsp::core::oscillator::update_phasor;
 using algae::dsp::core::oscillator::sinOsc;
+using algae::dsp::core::oscillator::lp_blit_square_t;
+using algae::dsp::core::oscillator::lp_blit_square;
+// using algae::dsp::core::oscillator::lp_blit_saw_t;
+// using algae::dsp::core::oscillator::lp_blit_saw;
+using algae::dsp::core::oscillator::process;
 using algae::dsp::core::oscillator::fm_bl_saw_t;
 using algae::dsp::core::oscillator::process_fm_bl_saw;
 using algae::dsp::core::oscillator::max_bl_modulation_index;
 using algae::dsp::core::units::mtof;
 
 namespace telegraph{
-    template<typename sample_t>
+    template<typename sample_t, typename frequency_t>
     struct voice_t {
         int note;
         bool is_active;
-        fm_bl_saw_t<sample_t, sample_t> exciter;
+        // fm_bl_saw_t<sample_t, sample_t> exciter;
+        lp_blit_square_t<sample_t, frequency_t> exciter;
         ramp_t<sample_t> noise_envelope;
         ramp_t<sample_t> exciter_envelope;
         bandpass_t<sample_t> resonator;
@@ -55,11 +61,11 @@ namespace telegraph{
         int noise_decay=4800;
     };
 
-    template<typename sample_t>
-    voice_t<sample_t> initVoice(voice_t<sample_t> v, sample_t sampleRate){
+    template<typename sample_t, typename frequency_t>
+    voice_t<sample_t,frequency_t> initVoice(voice_t<sample_t,frequency_t> v, sample_t sampleRate){
         v.is_active = false;
         v.amp_gate = false;
-        v.exciter = algae::dsp::core::oscillator::fm_bl_saw<sample_t,sample_t>(v.exciter, 0, sampleRate);
+        v.exciter = lp_blit_square<sample_t,frequency_t>(0, 19.0, sampleRate);
         v.exciter_envelope = ramp_t<sample_t>();
         v.noise_envelope = ramp_t<sample_t>();
         v.amp_envelope = adsr_t<sample_t>();
@@ -67,8 +73,8 @@ namespace telegraph{
         return v;
     }
 
-    template<typename sample_t>
-    voice_t<sample_t> resetVoice(voice_t<sample_t> v){
+    template<typename sample_t, typename frequency_t>
+    voice_t<sample_t,frequency_t> resetVoice(voice_t<sample_t,frequency_t> v){
         v.is_active = false;
         v.amp_gate = false;
         v.exciter_envelope = ramp_t<sample_t>();
@@ -80,32 +86,33 @@ namespace telegraph{
     using algae::dsp::core::oscillator::sinOsc; 
 
     template<typename sample_t, typename frequency_t>
-    voice_t<sample_t> process(voice_t<sample_t> v, params_t<sample_t> params, frequency_t sampleRate){
+    voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> params, frequency_t sampleRate){
 
-        sample_t noise = algae::dsp::core::oscillator::noise<sample_t>();
-        sample_t sq_env = v.exciter_envelope.value * v.exciter_envelope.value;
-        noise *= v.noise_envelope.value * v.noise_envelope.value;
+        // sample_t noise = algae::dsp::core::oscillator::noise<sample_t>();
+        // sample_t sq_env = v.exciter_envelope.value * v.exciter_envelope.value;
+        // noise *= v.noise_envelope.value * v.noise_envelope.value;
         // sample_t exciter_output = sinOsc<sample_t>(v.exciter.phasor.phase);
         // sample_t exciter_output = algae::dsp::core::oscillator::fm_bl_pulse<double>(v.exciter.phasor.phase, algae::dsp::core::oscillator::max_bl_modulation_index(v.resonator_frequency,v.resonator_frequency,sampleRate));
-        sample_t resonator_input = noise + v.exciter.output + sq_env * cos( params.resonator_feedback * v.resonator.y1);
-        v.resonator = process_bandpass<sample_t>(v.resonator, resonator_input);
+        // sample_t resonator_input = noise + v.exciter.output + sq_env * cos( params.resonator_feedback * v.resonator.y1);
+        // v.resonator = process_bandpass<sample_t>(v.resonator, resonator_input);
 
         // v.exciter.phasor = update_phasor<double>(v.exciter.phasor, v.resonator_frequency, sampleRate);
-        v.exciter = process_fm_bl_saw(v.exciter, sampleRate);
+        sample_t output = v.exciter.integrator.y1;
+        v.exciter = process(v.exciter, sampleRate);
 
         v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, params.amp_attack, params.amp_decay, params.amp_sustain, params.amp_release);
         v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, params.feedback_attack, params.feedback_decay);
         v.noise_envelope = update_ad<sample_t>(v.noise_envelope, params.noise_attack, params.noise_decay);
         
-        v.output = tanh(v.exciter.integrator.y1);//v.exciter.integrator.y1);//exciter_output);
+        v.output = output;//v.exciter.integrator.y1);//exciter_output);
         v.output *= v.amp_envelope.env.value;
         v.output *= 0.5;
         return v;
         
     }
 
-    template<typename sample_t>
-    voice_t<sample_t> noteOn(voice_t<sample_t> v, params_t<sample_t> p, sample_t note, sample_t sampleRate){
+    template<typename sample_t, typename frequency_t>
+    voice_t<sample_t,frequency_t> noteOn(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, sample_t note, sample_t sampleRate){
         v.note = note;
         sample_t freq = mtof<sample_t>(note);
         v.resonator_frequency = freq;
@@ -122,8 +129,8 @@ namespace telegraph{
         return v;
     }
 
-    template<typename sample_t>
-    voice_t<sample_t> noteOff(voice_t<sample_t> v){
+    template<typename sample_t, typename frequency_t>
+    voice_t<sample_t, frequency_t> noteOff(voice_t<sample_t, frequency_t> v){
         v.amp_gate = false;
         return v;
     }
