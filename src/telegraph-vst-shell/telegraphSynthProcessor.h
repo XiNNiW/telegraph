@@ -10,14 +10,14 @@ namespace Steinberg {
 namespace Vst {
 namespace mda {
 
-#define NPARAMS  26      //number of parameters
+#define NPARAMS  33      //number of parameters
 #define SILENCE  0.001f  //voice choking
 #define PI       3.1415926535897932f
 #define TWOPI    6.2831853071795864f
 #define ANALOG   0.002f  //oscillator drift
 
 using algae::dsp::core::filter::vcf_t;
-using algae::dsp::core::filter::update_vcf;
+using algae::dsp::core::filter::process;
 using algae::dsp::core::filter::onepole_t;
 using algae::dsp::core::filter::update_onepole_hip;
 using algae::dsp::core::filter::bp_t;

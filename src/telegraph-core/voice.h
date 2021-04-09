@@ -1,16 +1,18 @@
 #include <algae.h>
 using algae::dsp::shell::dsp_node;
 using algae::dsp::core::filter::vcf_t;
-using algae::dsp::core::filter::update_vcf;
+using algae::dsp::core::filter::process;
 using algae::dsp::core::filter::onepole_t;
 using algae::dsp::core::filter::update_onepole_hip;
 using algae::dsp::core::filter::bp_t;
 using algae::dsp::core::filter::bp;
 using algae::dsp::core::filter::bandpass_t;
-using algae::dsp::core::filter::process_bandpass;
+using algae::dsp::core::filter::process;
 using algae::dsp::core::filter::update_coefficients;
 using algae::dsp::core::filter::update_bp;
 using algae::dsp::core::filter::update_biquad;
+using algae::dsp::core::filter::reson_bp_t;
+using algae::dsp::core::filter::reson_bp;
 using algae::dsp::core::filter::dc_block_t;
 using algae::dsp::core::control::ramp_t;
 using algae::dsp::core::control::adsr_t;
@@ -19,38 +21,58 @@ using algae::dsp::core::control::update_ad;
 using algae::dsp::core::oscillator::noise;
 using algae::dsp::core::oscillator::phasor_t;
 using algae::dsp::core::oscillator::update_phasor;
-using algae::dsp::core::oscillator::sinOsc;
-using algae::dsp::core::oscillator::lp_blit_square_t;
-using algae::dsp::core::oscillator::lp_blit_square;
-// using algae::dsp::core::oscillator::lp_blit_saw_t;
-// using algae::dsp::core::oscillator::lp_blit_saw;
+using algae::dsp::core::oscillator::update_phase_custom_period;
+using algae::dsp::core::oscillator::stk_blit_saw_t;
+using algae::dsp::core::oscillator::stk_blit_saw;
+using algae::dsp::core::oscillator::stk_blit_square_t;
+using algae::dsp::core::oscillator::stk_blit_square;
+using algae::dsp::core::oscillator::setFrequency;
 using algae::dsp::core::oscillator::process;
-using algae::dsp::core::oscillator::fm_bl_saw_t;
-using algae::dsp::core::oscillator::process_fm_bl_saw;
-using algae::dsp::core::oscillator::max_bl_modulation_index;
 using algae::dsp::core::units::mtof;
 
+#define TWO_PI  2*M_PI 
+
 namespace telegraph{
+    enum Wave {
+        SAW,
+        SQUARE,
+        SINE
+    };
+    
     template<typename sample_t, typename frequency_t>
     struct voice_t {
+        //control
         int note;
-        bool is_active;
-        // fm_bl_saw_t<sample_t, sample_t> exciter;
-        lp_blit_square_t<sample_t, frequency_t> exciter;
-        ramp_t<sample_t> noise_envelope;
-        ramp_t<sample_t> exciter_envelope;
-        bandpass_t<sample_t> resonator;
-        dc_block_t<sample_t> dc_blocker;
-        sample_t resonator_frequency;
         bool amp_gate;
+        frequency_t frequency;
+        ramp_t<sample_t> exciter_envelope;
         adsr_t<sample_t> amp_envelope;
-        sample_t output;
+        sample_t lfo_phase;
+        //audio
+        //union {
+            stk_blit_saw_t<sample_t, frequency_t> sawtooth;
+            stk_blit_square_t<sample_t, frequency_t> square;
+            sample_t phase;
+        //};
+        frequency_t phi;
+        frequency_t shaper_phi;
+        sample_t shaper_phase_left;
+        sample_t shaper_phase_right;
+        sample_t resonator_frequency;
+        reson_bp_t<sample_t> resonator_left;
+        reson_bp_t<sample_t> resonator_right;
+        onepole_t<sample_t, frequency_t> highpass_left;
+        onepole_t<sample_t, frequency_t> highpass_right;
+        sample_t out_left;
+        sample_t out_right;
     };
 
     template<typename sample_t>
     struct params_t {
         sample_t resonator_q=1.0;
-        sample_t resonator_feedback=-1.25;
+        sample_t resonator_feedback=0.01;
+        sample_t resonator_cross_feedback=0.01;
+        sample_t resonator_detune=0.01;
         int amp_attack=48;
         int amp_decay=4800;
         sample_t amp_sustain=0.9;
@@ -59,93 +81,148 @@ namespace telegraph{
         int feedback_decay=48000;
         int noise_attack=48;
         int noise_decay=4800;
+        sample_t osc_tune=1;
+        sample_t resonater_tune_L=1;
+        sample_t resonater_tune_R=1;
+        sample_t shaper_tune=1;
+        sample_t shaper_discord=0;
+        sample_t shaper_amount=1;
+        Wave wave_mode=SQUARE;
+        sample_t q_scaling = 1;
+        sample_t gain=0.75;
     };
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t,frequency_t> initVoice(voice_t<sample_t,frequency_t> v, sample_t sampleRate){
-        v.is_active = false;
         v.amp_gate = false;
-        v.exciter = lp_blit_square<sample_t,frequency_t>(0, 19.0, sampleRate);
-        v.exciter_envelope = ramp_t<sample_t>();
-        v.noise_envelope = ramp_t<sample_t>();
-        v.amp_envelope = adsr_t<sample_t>();
-        v.resonator = bandpass_t<sample_t>();
+        v.sawtooth = stk_blit_saw<sample_t,frequency_t>(440.0, sampleRate);
+        v.square = stk_blit_square<sample_t,frequency_t>(440.0, sampleRate);
+        
+        // v.exciter_envelope = ramp_t<sample_t>();
+        // v.amp_envelope = adsr_t<sample_t>();
         return v;
     }
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t,frequency_t> resetVoice(voice_t<sample_t,frequency_t> v){
-        v.is_active = false;
         v.amp_gate = false;
         v.exciter_envelope = ramp_t<sample_t>();
-        v.noise_envelope = ramp_t<sample_t>();
         v.amp_envelope = adsr_t<sample_t>();
         return v;
     }
 
-    using algae::dsp::core::oscillator::sinOsc; 
-
     template<typename sample_t, typename frequency_t>
-    voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> params, frequency_t sampleRate){
-
-        // sample_t noise = algae::dsp::core::oscillator::noise<sample_t>();
-        // sample_t sq_env = v.exciter_envelope.value * v.exciter_envelope.value;
-        // noise *= v.noise_envelope.value * v.noise_envelope.value;
-        // sample_t exciter_output = sinOsc<sample_t>(v.exciter.phasor.phase);
-        // sample_t exciter_output = algae::dsp::core::oscillator::fm_bl_pulse<double>(v.exciter.phasor.phase, algae::dsp::core::oscillator::max_bl_modulation_index(v.resonator_frequency,v.resonator_frequency,sampleRate));
-        // sample_t resonator_input = noise + v.exciter.output + sq_env * cos( params.resonator_feedback * v.resonator.y1);
-        // v.resonator = process_bandpass<sample_t>(v.resonator, resonator_input);
-
-        // v.exciter.phasor = update_phasor<double>(v.exciter.phasor, v.resonator_frequency, sampleRate);
-        sample_t output = v.exciter.integrator.y1;
-        v.exciter = process(v.exciter, sampleRate);
-
-        v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, params.amp_attack, params.amp_decay, params.amp_sustain, params.amp_release);
-        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, params.feedback_attack, params.feedback_decay);
-        v.noise_envelope = update_ad<sample_t>(v.noise_envelope, params.noise_attack, params.noise_decay);
+    voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, frequency_t sampleRate){
         
-        v.output = output;//v.exciter.integrator.y1);//exciter_output);
-        v.output *= v.amp_envelope.env.value;
-        v.output *= 0.5;
+        sample_t exciter;
+        switch(p.wave_mode){
+            case SAW:  exciter = v.sawtooth.state; v.sawtooth = process(v.sawtooth, sampleRate); break;
+            case SQUARE: exciter = v.square.state; v.square = process(v.square, sampleRate); break;
+            default: exciter = sin(v.phase); v.phase = update_phase_custom_period(v.phase, v.phi); break;
+        }
+
+        sample_t sq_env = v.exciter_envelope.value;
+        sample_t shaper_left = sq_env*p.shaper_amount*sin(v.shaper_phase_left);
+        sample_t shaper_right = sq_env*p.shaper_amount*cos(v.shaper_phase_right);
+        sample_t feedback_signal_left = -sq_env*cos(TWO_PI*(p.resonator_feedback*v.resonator_left.y1 + p.resonator_cross_feedback*v.resonator_right.y1 - shaper_left)); //+ sq_env*sin(v.phase)
+        sample_t feedback_signal_right = sq_env*cos(TWO_PI*(p.resonator_feedback*v.resonator_right.y1 - p.resonator_cross_feedback*v.resonator_left.y1 + shaper_right )); //+ sq_env*sin(v.phase)
+        sample_t resonator_input_left =  exciter + feedback_signal_left;
+        sample_t resonator_input_right =  exciter + feedback_signal_right;
+        resonator_input_left *= 0.5;
+        resonator_input_right *= 0.5;
+        v.resonator_left = process<sample_t, frequency_t>(v.resonator_left, resonator_input_left);
+        v.resonator_right = process<sample_t, frequency_t>(v.resonator_right, resonator_input_right);
+
+        v.highpass_left = update_onepole_hip<sample_t, frequency_t>(v.highpass_left,v.resonator_left.y1,5.0,sampleRate);
+        v.highpass_right = update_onepole_hip<sample_t, frequency_t>(v.highpass_right,v.resonator_right.y1,5.0,sampleRate);
+
+        v.out_left = v.highpass_left.y*p.gain;
+        v.out_left = tanh(v.out_left);
+        v.out_left *= v.amp_envelope.env.value;
+        v.out_left *= 0.5;
+
+        v.out_right = v.highpass_right.y*p.gain;
+        v.out_right = tanh(v.out_right);//v.exciter.integrator.y1);//exciter_output);
+        v.out_right *= v.amp_envelope.env.value;
+        v.out_right *= 0.5;
+
+        v.shaper_phase_left = update_phase_custom_period<double,double>(v.shaper_phase_left, v.shaper_phi);
+        v.shaper_phase_left += p.shaper_discord*v.resonator_right.y1*TWO_PI;
+        v.shaper_phase_right = update_phase_custom_period<double,double>(v.shaper_phase_right, v.shaper_phi);
+        v.shaper_phase_right += p.shaper_discord*v.resonator_right.y1*TWO_PI;
+        v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
+        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
+        
         return v;
         
+    }
+
+    template<typename sample_t, typename frequency_t> 
+    voice_t<sample_t, frequency_t> process_control(voice_t<sample_t,frequency_t> v, params_t<sample_t> p){
+        v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
+        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
+        return v;
     }
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t,frequency_t> noteOn(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, sample_t note, sample_t sampleRate){
-        v.note = note;
-        sample_t freq = mtof<sample_t>(note);
-        v.resonator_frequency = freq;
-        v.exciter = algae::dsp::core::oscillator::setFrequency(v.exciter, freq, sampleRate);
         v.amp_gate = true;
-        v.is_active = true;
         v.amp_envelope = adsr_t<sample_t>();
         v.exciter_envelope = ramp_t<sample_t>();
-        v.noise_envelope = ramp_t<sample_t>();
+        
+        v.note = note;
+        frequency_t freq = mtof<frequency_t>(note);
+        v.shaper_phi = p.shaper_tune*freq/sampleRate;
 
-        sample_t q = p.resonator_q;
-        v.resonator = update_coefficients<sample_t,sample_t>(v.resonator, v.resonator_frequency, p.resonator_q, sampleRate);
+        frequency_t resonator_frequency_L = freq*p.resonater_tune_L;
+        frequency_t resonator_frequency_R = freq*p.resonater_tune_R;
+        v.resonator_left = update_coefficients<sample_t,sample_t>(v.resonator_left, resonator_frequency_L/*+p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
+        v.resonator_right = update_coefficients<sample_t,sample_t>(v.resonator_right, resonator_frequency_R/*-p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
+
+        p.q_scaling = p.resonator_q>1?p.resonator_q:1;
+        
+        switch(p.wave_mode){
+            case SAW: v.sawtooth = setFrequency(v.sawtooth, freq*p.osc_tune, sampleRate); break;
+            case SQUARE: v.square = setFrequency(v.square, freq*p.osc_tune, sampleRate); break;
+            default: v.phi = freq*p.osc_tune/sampleRate; break;
+        }
 
         return v;
     }
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t, frequency_t> noteOff(voice_t<sample_t, frequency_t> v){
+        
         v.amp_gate = false;
         return v;
     }
 
     template<typename sample_t>
     sample_t denormalize(sample_t val, sample_t min, sample_t max){
+        
         val = val>=0.0 && val<=1.0 ? val : 0.0;
         return val*(max-min) + min;
     }
 
     template<typename sample_t>
     sample_t denormalize_exp(sample_t val, sample_t min, sample_t max, sample_t base){
-        val = val>=0.0 && val<=1.0 ? val : 0.0;
-        val = base!=1?pow(base,val)/(base-1):val;
+        
+        val = val>0.0 && val<=1.0 ? val : 0.0;
+        val = val>0.0 && base!=1?pow(base,val)/(base-1):val;
         return val*(max-min) + min;
+    }
+
+    template<typename sample_t, int SIZE>
+    sample_t denormalize_set(sample_t val,  const sample_t (&options) [SIZE]){
+        
+        val = val>=0 && val<=1 ? val : 0;
+        return options[size_t(floor(val*(SIZE-1)))];
+    }
+
+    template<typename input_t, typename output_t, int SIZE>
+    output_t denormalize_set(input_t val,  const output_t (&options) [SIZE]){
+        val = val>=0 && val<=1 ? val : 0;
+        return options[size_t(floor(val*(SIZE-1)))];
     }
 
     template<typename sample_t>

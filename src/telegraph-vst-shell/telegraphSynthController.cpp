@@ -46,8 +46,15 @@ tresult PLUGIN_API TelegraphSynthController::initialize (FUnknown* context)
 		parameters.addParameter (USTRING("Amp Release"), USTRING(""), 0, 0.25, ParameterInfo::kCanAutomate, pid++);
 		parameters.addParameter (USTRING("Chaos Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
 		parameters.addParameter (USTRING("Chaos Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Noise Attack"), USTRING(""), 0, 0.0, ParameterInfo::kCanAutomate, pid++);
-		parameters.addParameter (USTRING("Noise Decay"), USTRING(""), 0, 0.3, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("OSC tune"), USTRING(""), 5, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Resonator L tune"), USTRING(""), 6, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Resonator R tune"), USTRING(""), 6, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("Waveshape tune"), USTRING(""), 7, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("x feedback"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("shaper discord"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("shaper amount"), USTRING(""), 0, 0.5, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("wave shape"), USTRING(""), 2, 0, ParameterInfo::kCanAutomate, pid++);
+		parameters.addParameter (USTRING("saturation"), USTRING(""), 0, 0, ParameterInfo::kCanAutomate, pid++);
 
 		// auto* glideModeParam = new IndexedParameter (USTRING("Glide"), nullptr, 5, 0, ParameterInfo::kCanAutomate | ParameterInfo::kIsList, pid++);
 		// glideModeParam->setIndexString (0, UString128("Poly"));

@@ -8,11 +8,10 @@ namespace Steinberg {
 namespace Vst {
 namespace mda {
 
-
-
 float TelegraphSynthProcessor::programParams[kNumPrograms][NPARAMS] = { 
-	{1.0f, 0.37f, 0.25f, 0.3f, 0.32f, 0.5f, 0.9f, 0.6f, 0.12f, 0.0f, 0.5f, 0.9f, 0.89f, 0.9f, 0.73f, 0.0f, 0.5f, 1.0f, 0.71f, 0.81f, 0.65f, 0.0f, 0.5f, 0.5f, 0.0f, 0.1f},
-	{0.88f, 0.51f, 0.5f, 0.0f, 0.49f, 0.5f, 0.46f, 0.76f, 0.69f, 0.1f, 0.69f, 1.0f, 0.86f, 0.76f, 0.57f, 0.3f, 0.8f, 0.68f, 0.66f, 0.79f, 0.13f, 0.25f, 0.45f, 0.5f, 0.0f, 0.1f},
+	{0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5},
+	// {1.0f, 0.37f, 0.25f, 0.3f, 0.32f, 0.5f, 0.9f, 0.6f, 0.12f, 0.0f, 0.5f, 0.9f, 0.89f, 0.9f, 0.73f, 0.0f, 0.5f, 1.0f, 0.71f, 0.81f, 0.65f, 0.0f, 0.5f, 0.5f, 0.0f, 0.1f, 0.5, 0.5, 0.5, 0.5,0,0},
+	// {0.88f, 0.51f, 0.5f, 0.0f, 0.49f, 0.5f, 0.46f, 0.76f, 0.69f, 0.1f, 0.69f, 1.0f, 0.86f, 0.76f, 0.57f, 0.3f, 0.8f, 0.68f, 0.66f, 0.79f, 0.13f, 0.25f, 0.45f, 0.5f, 0.0f, 0.1f, 0.5, 0.5, 0.5, 0.5,0,1},
 	// {0.88f, 0.51f, 0.5f, 0.16f, 0.49f, 0.5f, 0.49f, 0.82f, 0.66f, 0.08f, 0.89f, 0.85f, 0.69f, 0.76f, 0.47f, 0.12f, 0.22f, 0.55f, 0.66f, 0.89f, 0.34f, 0.0f, 1.0f, 0.5f},
 	// {1.0f, 0.26f, 0.14f, 0.0f, 0.35f, 0.5f, 0.3f, 0.25f, 0.7f, 0.0f, 0.63f, 0.0f, 0.35f, 0.0f, 0.25f, 0.0f, 0.5f, 1.0f, 0.3f, 0.81f, 0.5f, 0.5f, 0.5f, 0.5f},
 	// {0.41f, 0.5f, 0.79f, 0.0f, 0.08f, 0.32f, 0.49f, 0.01f, 0.34f, 0.0f, 0.93f, 0.61f, 0.87f, 1.0f, 0.93f, 0.11f, 0.48f, 0.98f, 0.32f, 0.81f, 0.5f, 0.0f, 0.5f, 0.5f},
@@ -232,11 +231,12 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 			{
 				VOICE *V = voice;
 				oL = oR = 0.0f;
-				float oneSample = 0;
+				float left_sample, right_sample;
 
 				if (--k<0)
 				{
 					// control rate update here
+					// V->vox = process_control<double,double>(V->vox, parameters);
 					k = KMAX;
 				}
 
@@ -247,7 +247,8 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 					if (V->vox.amp_gate || V->vox.amp_envelope.env.value > SILENCE)
 					{ //Sinc-Loop Oscillator
 						V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
-						oneSample = V->vox.output;
+						left_sample = V->vox.out_left;
+						right_sample = V->vox.out_right;
 
 						// V->env += V->envd * (V->envl - V->env);
 
@@ -260,10 +261,10 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 
 						}
 						
-						oneSample = oneSample;// * V->snaVolume;
+						// left_sample = left_sample;// * V->snaVolume;
 						
-						oL += oneSample/2.0; //* V->snaPanLeft;
-						oR += oneSample/2.0; //* V->snaPanRight;
+						oL += left_sample*0.5; //* V->snaPanLeft;
+						oR += right_sample*0.5; //* V->snaPanRight;
 					}
 					V++;
 				}
@@ -371,21 +372,27 @@ void TelegraphSynthProcessor::noteOn (int32 note, int32 velocity, int32 noteID)
 //-----------------------------------------------------------------------------
 void TelegraphSynthProcessor::recalculate ()
 {
-
 	auto SR = getSampleRate();
 
-	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 100.0,100.0); 
-	parameters.resonator_feedback = telegraph::denormalize<double>(double(params[1]), -1.0, 1.0); 
+	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 10.0,100.0); 
+	// parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 1.0,10.0); 
+	parameters.resonator_feedback = telegraph::denormalize_exp<double>(double(params[1]), 0.0, 100.0, 1000.0); 
 	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*SR; 
 	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*SR; 
 	parameters.amp_sustain = double(params[4]); 
 	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*SR;
 	parameters.feedback_attack = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 4.0,100.0)*SR;
 	parameters.feedback_decay = telegraph::denormalize_exp<double>(double(params[7]), 0.0, 4.0,100.0)*SR;
-	parameters.noise_attack = telegraph::denormalize_exp<double>(double(params[8]), 0.0, 4.0,100.0)*SR;
-	parameters.noise_decay = telegraph::denormalize_exp<double>(double(params[9]), 0.0, 4.0,100.0)*SR;
-
-
+	
+	parameters.osc_tune = telegraph::denormalize_set<double>(double(params[8]), {0.25, 0.5, 1, 2, 3, 4});
+	parameters.resonater_tune_L = telegraph::denormalize_set<double>(double(params[9]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
+	parameters.resonater_tune_R = telegraph::denormalize_set<double>(double(params[10]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
+	parameters.shaper_tune = telegraph::denormalize_set<double>(double(params[11]), {0.25, 0.5, 1, 1.25, 1.5, 2, 3, 4});
+	parameters.resonator_cross_feedback = telegraph::denormalize_exp<double>(double(params[12]), 0.0, 1.0, 100.0);
+	parameters.shaper_discord = telegraph::denormalize_exp<double>(double(params[13]), 0.0, 0.9, 1000.0);
+	parameters.shaper_amount = telegraph::denormalize_exp<double>(double(params[14]), 0.0, 0.9, 1000.0);
+	parameters.wave_mode = telegraph::denormalize_set<double,telegraph::Wave>(params[15], {telegraph::SAW,telegraph::SQUARE, telegraph::SINE});
+	parameters.gain = telegraph::denormalize_exp<double>(params[16], 0.5,2.0,1);
 	
 }
 
