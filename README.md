@@ -16,7 +16,7 @@ sudo cp *.a /usr/lib
 ### mac os
 1. you will need xcode... I'm sorry...
 1. you will need homebrew
-3. run the following to get cmake:
+1. run the following to get cmake:
 ```
 brew install cmake
 ```
@@ -30,6 +30,8 @@ cmake ..
 make
 make install
 ```
+1. later, if you get a build error about xcode version, you may need 
+```sudo xcode-select -s /Applications/Xcode.app/Contents/Developer```
 ### other OS
 please follow GTest's instructions for installing google-test binaries
 please follow cmake's instructions for installing cmake
