@@ -28,9 +28,16 @@ using algae::dsp::core::oscillator::stk_blit_square_t;
 using algae::dsp::core::oscillator::stk_blit_square;
 using algae::dsp::core::oscillator::setFrequency;
 using algae::dsp::core::oscillator::process;
+using algae::dsp::core::oscillator::tanh_approx_pade;
+using algae::dsp::core::oscillator::cos_approx_taylor_4;
+using algae::dsp::core::oscillator::sine_approx_taylor_4;
+using algae::dsp::core::oscillator::sine_t;
+using algae::dsp::core::oscillator::cos_t;
 using algae::dsp::core::units::mtof;
 
 #define TWO_PI  2*M_PI 
+
+
 
 namespace telegraph{
     enum Wave {
@@ -111,21 +118,21 @@ namespace telegraph{
         return v;
     }
 
-    template<typename sample_t, typename frequency_t>
+    template<typename sample_t, typename frequency_t, int TABLE_SIZE>
     voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, frequency_t sampleRate){
         
         sample_t exciter;
         switch(p.wave_mode){
             case SAW:  exciter = v.sawtooth.state; v.sawtooth = process(v.sawtooth, sampleRate); break;
             case SQUARE: exciter = v.square.state; v.square = process(v.square, sampleRate); break;
-            default: exciter = sin(v.phase); v.phase = update_phase_custom_period(v.phase, v.phi); break;
+            default: exciter = sine_t<sample_t,TABLE_SIZE>::lookup(v.phase); v.phase = update_phase_custom_period(v.phase, v.phi,1.0); break;
         }
 
         sample_t sq_env = v.exciter_envelope.value;
-        sample_t shaper_left = sq_env*p.shaper_amount*sin(v.shaper_phase_left);
-        sample_t shaper_right = sq_env*p.shaper_amount*cos(v.shaper_phase_right);
-        sample_t feedback_signal_left = -sq_env*cos(TWO_PI*(p.resonator_feedback*v.resonator_left.y1 + p.resonator_cross_feedback*v.resonator_right.y1 - shaper_left)); //+ sq_env*sin(v.phase)
-        sample_t feedback_signal_right = sq_env*cos(TWO_PI*(p.resonator_feedback*v.resonator_right.y1 - p.resonator_cross_feedback*v.resonator_left.y1 + shaper_right )); //+ sq_env*sin(v.phase)
+        sample_t shaper_left = sq_env*p.shaper_amount*sine_t<sample_t,TABLE_SIZE>::lookup(v.shaper_phase_left);
+        sample_t shaper_right = sq_env*p.shaper_amount*cos_t<sample_t,TABLE_SIZE>::lookup(v.shaper_phase_right);
+        sample_t feedback_signal_left = -sq_env*cos_t<sample_t,TABLE_SIZE>::lookup((p.resonator_feedback*v.resonator_left.y1 + p.resonator_cross_feedback*v.resonator_right.y1 - shaper_left)); //+ sq_env*sin(v.phase)
+        sample_t feedback_signal_right = sq_env*cos_t<sample_t,TABLE_SIZE>::lookup((p.resonator_feedback*v.resonator_right.y1 - p.resonator_cross_feedback*v.resonator_left.y1 + shaper_right )); //+ sq_env*sin(v.phase)
         sample_t resonator_input_left =  exciter + feedback_signal_left;
         sample_t resonator_input_right =  exciter + feedback_signal_right;
         resonator_input_left *= 0.5;
@@ -137,22 +144,21 @@ namespace telegraph{
         v.highpass_right = update_onepole_hip<sample_t, frequency_t>(v.highpass_right,v.resonator_right.y1,5.0,sampleRate);
 
         v.out_left = v.highpass_left.y*p.gain;
-        v.out_left = tanh(v.out_left);
+        v.out_left = tanh_approx_pade(v.out_left);
         v.out_left *= v.amp_envelope.env.value;
         v.out_left *= 0.5;
 
         v.out_right = v.highpass_right.y*p.gain;
-        v.out_right = tanh(v.out_right);//v.exciter.integrator.y1);//exciter_output);
+        v.out_right = tanh_approx_pade(v.out_right);//v.exciter.integrator.y1);//exciter_output);
         v.out_right *= v.amp_envelope.env.value;
         v.out_right *= 0.5;
 
-        v.shaper_phase_left = update_phase_custom_period<double,double>(v.shaper_phase_left, v.shaper_phi);
-        v.shaper_phase_left += p.shaper_discord*v.resonator_right.y1*TWO_PI;
-        v.shaper_phase_right = update_phase_custom_period<double,double>(v.shaper_phase_right, v.shaper_phi);
-        v.shaper_phase_right += p.shaper_discord*v.resonator_right.y1*TWO_PI;
-        v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
-        v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
-        
+        v.shaper_phase_left += p.shaper_discord*v.resonator_right.y1;
+        v.shaper_phase_right += p.shaper_discord*v.resonator_right.y1;
+
+        v.shaper_phase_left = update_phase_custom_period<double,double>(v.shaper_phase_left, v.shaper_phi, 1.0);
+        v.shaper_phase_right = update_phase_custom_period<double,double>(v.shaper_phase_right, v.shaper_phi, 1.0);
+      
         return v;
         
     }
@@ -187,7 +193,7 @@ namespace telegraph{
             default: v.phi = freq*p.osc_tune/sampleRate; break;
         }
 
-        return v;
+        return process_control(v,p);
     }
 
     template<typename sample_t, typename frequency_t>

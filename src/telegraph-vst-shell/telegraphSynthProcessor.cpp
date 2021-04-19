@@ -236,7 +236,6 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 				if (--k<0)
 				{
 					// control rate update here
-					// V->vox = process_control<double,double>(V->vox, parameters);
 					k = KMAX;
 				}
 
@@ -246,7 +245,7 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 					// if (e > SILENCE)
 					if (V->vox.amp_gate || V->vox.amp_envelope.env.value > SILENCE)
 					{ //Sinc-Loop Oscillator
-						V->vox = telegraph::process<double, double>(V->vox, parameters, getSampleRate());
+						V->vox = telegraph::process<double, double, 1024>(V->vox, parameters, getSampleRate());
 						left_sample = V->vox.out_left;
 						right_sample = V->vox.out_right;
 
@@ -255,6 +254,8 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 						if (k==KMAX) //filter freq update at LFO rate
 						{
 							// more control rate updates here
+							V->vox = telegraph::process_control<double,double>(V->vox, parameters);
+
 							if ((V->env+V->envl)>3.0f) { V->envd=dec; V->envl=sus; } //envelopes
 							V->fenv += V->fenvd * (V->fenvl - V->fenv);
 							if ((V->fenv+V->fenvl)>3.0f) { V->fenvd=fdec; V->fenvl=fsus; }
@@ -373,16 +374,17 @@ void TelegraphSynthProcessor::noteOn (int32 note, int32 velocity, int32 noteID)
 void TelegraphSynthProcessor::recalculate ()
 {
 	auto SR = getSampleRate();
+	auto CR = getSampleRate()/KMAX;
 
 	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 10.0,100.0); 
 	// parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 1.0,10.0); 
 	parameters.resonator_feedback = telegraph::denormalize_exp<double>(double(params[1]), 0.0, 100.0, 1000.0); 
-	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*SR; 
-	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*SR; 
+	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*CR; 
+	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*CR; 
 	parameters.amp_sustain = double(params[4]); 
-	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*SR;
-	parameters.feedback_attack = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 4.0,100.0)*SR;
-	parameters.feedback_decay = telegraph::denormalize_exp<double>(double(params[7]), 0.0, 4.0,100.0)*SR;
+	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*CR;
+	parameters.feedback_attack = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 4.0,100.0)*CR;
+	parameters.feedback_decay = telegraph::denormalize_exp<double>(double(params[7]), 0.0, 4.0,100.0)*CR;
 	
 	parameters.osc_tune = telegraph::denormalize_set<double>(double(params[8]), {0.25, 0.5, 1, 2, 3, 4});
 	parameters.resonater_tune_L = telegraph::denormalize_set<double>(double(params[9]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
