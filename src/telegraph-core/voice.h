@@ -125,6 +125,7 @@ namespace telegraph{
         switch(p.wave_mode){
             case SAW:  exciter = v.sawtooth.state; v.sawtooth = process(v.sawtooth, sampleRate); break;
             case SQUARE: exciter = v.square.state; v.square = process(v.square, sampleRate); break;
+            // default: exciter = sin(v.phase); v.phase = update_phase_custom_period(v.phase, v.phi); break;
             default: exciter = sine_t<sample_t,TABLE_SIZE>::lookup(v.phase); v.phase = update_phase_custom_period(v.phase, v.phi,1.0); break;
         }
 
