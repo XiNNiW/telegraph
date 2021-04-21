@@ -38,3 +38,8 @@ build/**/*
 *.exe
 *.out
 *.app
+
+# mac crap
+.DS_Store
+*.xcode-project/
+*.xcode-project/**/*

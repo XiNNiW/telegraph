@@ -37,7 +37,7 @@ public:
 	TelegraphSynthProcessor ();
 	~TelegraphSynthProcessor ();
 	
-	int32 getVst2UniqueId () const SMTG_OVERRIDE { return 'teleg'; }
+	int32 getVst2UniqueId () const SMTG_OVERRIDE { return 'TE'; }
 
 	tresult PLUGIN_API initialize (FUnknown* context) SMTG_OVERRIDE;
 	tresult PLUGIN_API terminate () SMTG_OVERRIDE;
