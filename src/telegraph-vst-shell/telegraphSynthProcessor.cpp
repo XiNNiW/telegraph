@@ -201,6 +201,8 @@ void TelegraphSynthProcessor::setCurrentProgramNormalized (ParamValue val)
 //-----------------------------------------------------------------------------
 void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 {
+	auto SR = getSampleRate();
+	auto CR = getSampleRate()/KMAX;
 	int32 sampleFrames = data.numSamples;
 	
 	float* out1 = data.outputs[0].channelBuffers32[0];
@@ -245,7 +247,7 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 					// if (e > SILENCE)
 					if (V->vox.amp_gate || V->vox.amp_envelope.env.value > SILENCE)
 					{ //Sinc-Loop Oscillator
-						V->vox = telegraph::process<double, double, 1024>(V->vox, parameters, getSampleRate());
+						V->vox = telegraph::process<double, double, 1024>(V->vox, parameters, SR);
 						left_sample = V->vox.out_left;
 						right_sample = V->vox.out_right;
 
@@ -254,7 +256,7 @@ void TelegraphSynthProcessor::doProcessing (ProcessData& data)
 						if (k==KMAX) //filter freq update at LFO rate
 						{
 							// more control rate updates here
-							V->vox = telegraph::process_control<double,double>(V->vox, parameters);
+							V->vox = telegraph::process_control<double,double>(V->vox, parameters, SR, CR);
 
 							if ((V->env+V->envl)>3.0f) { V->envd=dec; V->envl=sus; } //envelopes
 							V->fenv += V->fenvd * (V->fenvl - V->fenv);
@@ -348,6 +350,8 @@ void TelegraphSynthProcessor::processEvents (IEventList* events)
 void TelegraphSynthProcessor::noteOn (int32 note, int32 velocity, int32 noteID)
 {
 	float l=100.0f; //louder than any envelope!
+	auto SR = getSampleRate();
+	auto CR = getSampleRate()/KMAX;
 
 	if (velocity>0) //note on
 	{
@@ -357,7 +361,7 @@ void TelegraphSynthProcessor::noteOn (int32 note, int32 velocity, int32 noteID)
 		{
 			if (voice[tmp].vox.amp_envelope.env.value<l && voice[tmp].vox.amp_envelope.env.value<2.0f) { l=voice[tmp].vox.amp_envelope.env.value;  v=tmp; }
 		}
-		voice[v].vox = telegraph::noteOn<double>(voice[v].vox, parameters, note, getSampleRate());
+		voice[v].vox = telegraph::noteOn<double>(voice[v].vox, parameters, note, SR, CR);
 	}
 	else //note off
 	{
@@ -377,24 +381,23 @@ void TelegraphSynthProcessor::recalculate ()
 	auto CR = getSampleRate()/KMAX;
 
 	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 10.0,100.0); 
-	// parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 1.0,10.0); 
 	parameters.resonator_feedback = telegraph::denormalize_exp<double>(double(params[1]), 0.0, 100.0, 1000.0); 
 	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*CR; 
 	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*CR; 
 	parameters.amp_sustain = double(params[4]); 
 	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*CR;
-	parameters.feedback_attack = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 4.0,100.0)*CR;
-	parameters.feedback_decay = telegraph::denormalize_exp<double>(double(params[7]), 0.0, 4.0,100.0)*CR;
+	parameters.vibrato_depth = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 1.0,100.0);
+	parameters.vibrato_speed = telegraph::denormalize<double>(double(params[7]), 0.0, 4.0);
 	
 	parameters.osc_tune = telegraph::denormalize_set<double>(double(params[8]), {0.25, 0.5, 1, 2, 3, 4});
 	parameters.resonater_tune_L = telegraph::denormalize_set<double>(double(params[9]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
-	parameters.resonater_tune_R = telegraph::denormalize_set<double>(double(params[10]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
+	parameters.filter_q = telegraph::denormalize<double>(double(params[10]), 0.0, 1.0);
 	parameters.shaper_tune = telegraph::denormalize_set<double>(double(params[11]), {0.25, 0.5, 1, 1.25, 1.5, 2, 3, 4});
 	parameters.resonator_cross_feedback = telegraph::denormalize_exp<double>(double(params[12]), 0.0, 1.0, 100.0);
-	parameters.shaper_discord = telegraph::denormalize_exp<double>(double(params[13]), 0.0, 0.9, 1000.0);
+	parameters.exciter_gain = telegraph::denormalize<double>(double(params[13]), 0.0, 1.0);
 	parameters.shaper_amount = telegraph::denormalize_exp<double>(double(params[14]), 0.0, 0.9, 1000.0);
-	parameters.wave_mode = telegraph::denormalize_set<double,telegraph::Wave>(params[15], {telegraph::SAW,telegraph::SQUARE, telegraph::SINE});
-	parameters.gain = telegraph::denormalize_exp<double>(params[16], 0.5,2.0,1);
+	parameters.wave_mode = telegraph::denormalize_set<double,telegraph::Wave>(params[15], {telegraph::SINE,telegraph::SQUARE, telegraph::SAW});
+	parameters.filter_cutoff = telegraph::denormalize<double>(params[16], 20, 20000.0);
 	
 }
 
