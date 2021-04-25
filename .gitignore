@@ -6,6 +6,10 @@
 build
 build/**/*
 
+# external libs
+libs
+libs/**/*
+
 # Prerequisites
 *.d
 
