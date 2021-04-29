@@ -132,6 +132,19 @@ namespace telegraph{
         return v;
     }
 
+    template<typename sample_t, typename frequency_t>
+    const inline bool isActive(const voice_t<sample_t,frequency_t>& v,const params_t<sample_t>& p){
+        bool isActive = false;
+        if(v.amp_envelope.env.value<0.0001 && v.amp_envelope.env.index > p.amp_attack){
+            isActive = false;
+        } else {
+            isActive = true;
+        }
+
+        return isActive;
+    }
+
+
     template<typename sample_t, typename frequency_t, int TABLE_SIZE>
     const inline voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, frequency_t sampleRate){
         
@@ -202,6 +215,9 @@ namespace telegraph{
         frequency_t resonator_frequency_L = v.frequency*p.resonater_tune_L;
         frequency_t resonator_frequency_R = v.frequency*p.resonater_tune_L;
 
+        resonator_frequency_L = resonator_frequency_L==0?1:resonator_frequency_L;
+        resonator_frequency_R = resonator_frequency_R==0?1:resonator_frequency_R;
+
         v.resonator_left = update_coefficients<sample_t,frequency_t>(v.resonator_left, resonator_frequency_L/*+p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
         v.resonator_right = update_coefficients<sample_t,frequency_t>(v.resonator_right, resonator_frequency_R/*-p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
 
@@ -210,7 +226,6 @@ namespace telegraph{
 
         // v.filter_left = setFilterParameters(v.filter_left,p.filter_cutoff,p.filter_q,sampleRate);
         // v.filter_right = setFilterParameters(v.filter_right,p.filter_cutoff,p.filter_q,sampleRate);
-
 
         v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
         v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
@@ -228,9 +243,6 @@ namespace telegraph{
         frequency_t freq = mtof<frequency_t>(note);
         v.frequency = freq;
         v.shaper_phi = p.shaper_tune*freq/sampleRate;
-
-
-        
         
         switch(p.wave_mode){
             case SAW: v.sawtooth = setFrequency(v.sawtooth, freq*p.osc_tune, sampleRate); break;
@@ -246,6 +258,61 @@ namespace telegraph{
         
         v.amp_gate = false;
         return v;
+    }
+
+    template<typename sample_t, typename frequency_t, size_t NUM_VOICES>
+    const inline std::array<voice_t<sample_t,frequency_t>, NUM_VOICES> playNote(
+        std::array<voice_t<sample_t,frequency_t>, NUM_VOICES> voices,
+        const params_t<sample_t> params,
+        const int channel,
+        const int noteNumber,
+        const int velocity,
+        const frequency_t sampleRate,
+        const frequency_t controlRate
+    ){
+        bool voiceWasAssigned = false;
+        
+        for(size_t index=0; index<NUM_VOICES; index++){
+            if (!isActive(voices[index], params)){
+                voices[index] = noteOn<sample_t,frequency_t>(voices[index], params, noteNumber, sampleRate, controlRate);
+                voiceWasAssigned = true;
+                break;
+            }
+        }
+
+        if(!voiceWasAssigned){
+            size_t indexOfQuietestVoice = 0;
+            sample_t minValue = 10000;
+            for(size_t index=0; index<NUM_VOICES; index++){
+                sample_t value = voices[index].amp_envelope.env.value;
+                if(value<minValue){
+                    minValue = value;
+                    indexOfQuietestVoice = index;
+                }
+            }
+
+            voices[indexOfQuietestVoice] = noteOn<sample_t,frequency_t>(voices[indexOfQuietestVoice], params, noteNumber, sampleRate, controlRate);
+
+        }
+
+        return voices;
+    }
+
+    template<typename sample_t, typename frequency_t, size_t NUM_VOICES>
+    const inline std::array<voice_t<sample_t,frequency_t>, NUM_VOICES> releaseNote(
+        std::array<voice_t<sample_t,frequency_t>, NUM_VOICES> voices,
+        const params_t<sample_t> params,
+        const int channel,
+        const int noteNumber,
+        const int velocity,
+        const frequency_t sampleRate
+    ){
+        for(size_t index=0; index<NUM_VOICES; index++){
+            if(isActive(voices[index],params) && voices[index].note==noteNumber){
+                voices[index] = noteOff<sample_t,frequency_t>(voices[index]);
+            }
+        }
+        return voices;
     }
 
     template<typename sample_t>

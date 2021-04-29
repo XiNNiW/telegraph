@@ -75,7 +75,7 @@ juce_add_plugin(telegraph
             # FORMATS ${SURGE_JUCE_FORMATS}
             FORMATS VST3
             )
-
+juce_generate_juce_header( telegraph )
 target_compile_definitions(telegraph PUBLIC
             JUCE_ALLOW_STATIC_NULL_VARIABLES=0
             JUCE_STRICT_REFCOUNTEDPOINTER=1
@@ -102,15 +102,24 @@ target_compile_definitions(telegraph PUBLIC
              )
  
 target_sources(telegraph PRIVATE
-        src/telegraph-juce-shell/TelegraphSynthEditor.cpp
-        src/telegraph-juce-shell/TelegraphSynthProcessor.cpp
+        src/telegraph-juce-shell/PluginEditor.cpp
+        src/telegraph-juce-shell/PluginProcessor.cpp
         ${SURGE_GENERATED_SOURCES}
         ${SURGE_OS_SOURCES}
         ${SURGE_SYNTH_SOURCES}
 
         ${SURGE_SYNTH_JUCE_GUI_SOURCES}
         )
-target_link_libraries(telegraph PRIVATE telegraph-core)
+target_link_libraries(telegraph PUBLIC 
+        telegraph-core
+        juce::juce_audio_utils
+        juce::juce_audio_processors
+        juce::juce_audio_plugin_client
+)
+target_include_directories(telegraph PUBLIC
+        src/telegraph-juce-shell
+        src/telegraph-core
+)   
 
 
 # #VST Target
@@ -123,7 +132,8 @@ target_link_libraries(telegraph PRIVATE telegraph-core)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffast-math -ftree-vectorize")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math -fno-rtti -ftree-vectorize -std=c++17")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math -ftree-vectorize -std=c++17")
+# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math -fno-rtti -ftree-vectorize -std=c++17")
 
 
 

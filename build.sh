@@ -6,6 +6,6 @@ else
     mkdir build;
 fi
 
-cmake -DCMAKE_BUILD_TYPE=Release ../;
+cd build && cmake -DCMAKE_BUILD_TYPE=Release ../;
 
 make;
