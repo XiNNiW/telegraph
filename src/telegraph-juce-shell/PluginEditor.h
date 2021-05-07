@@ -14,11 +14,11 @@
 //==============================================================================
 /**
 */
-class THISISATESTAudioProcessorEditor  : public juce::AudioProcessorEditor
+class TelegraphAudioProcessorEditor  : public juce::AudioProcessorEditor
 {
 public:
-    THISISATESTAudioProcessorEditor (TelegraphAudioProcessor&);
-    ~THISISATESTAudioProcessorEditor() override;
+    TelegraphAudioProcessorEditor (TelegraphAudioProcessor&);
+    ~TelegraphAudioProcessorEditor() override;
 
     //==============================================================================
     void paint (juce::Graphics&) override;
@@ -29,5 +29,5 @@ private:
     // access the processor object that created it.
     TelegraphAudioProcessor& audioProcessor;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (THISISATESTAudioProcessorEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessorEditor)
 };

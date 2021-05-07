@@ -46,16 +46,17 @@ using algae::dsp::core::filter::setFilterParameters;
 
 namespace telegraph{
     enum Wave {
+        SINE,
         SAW,
         SQUARE,
-        SINE
+        TRI
     };
     
     template<typename sample_t, typename frequency_t>
     struct voice_t {
         //control
         int note;
-        bool amp_gate;
+        bool amp_gate=false;
         frequency_t frequency;
         ramp_t<sample_t> exciter_envelope;
         adsr_t<sample_t> amp_envelope;
@@ -87,40 +88,41 @@ namespace telegraph{
     template<typename sample_t>
     struct params_t {
         sample_t exciter_gain=1.0;
+        Wave wave_mode=SINE;
         sample_t resonator_q=1.0;
         sample_t resonator_feedback=0.01;
         sample_t resonator_cross_feedback=0.01;
+        sample_t resonator_chaos_character=0.01;
+        sample_t resonator_chaos_amount=0;
         sample_t resonator_detune=0.01;
         int amp_attack=48;
         int amp_decay=4800;
         sample_t amp_sustain=0.9;
-        int amp_release=48000;
+        int amp_release=2400;
         int feedback_attack=0;
-        int feedback_decay=48000;
+        int feedback_decay=2400;
         int noise_attack=48;
-        int noise_decay=4800;
+        int noise_decay=2400;
         sample_t osc_tune=1;
         sample_t resonater_tune_L=1;
         sample_t resonater_tune_R=1;
         sample_t shaper_tune=1;
-        sample_t vibrato_speed=0;
-        sample_t vibrato_depth=0;
-        sample_t shaper_amount=1;
-        Wave wave_mode=SQUARE;
-        sample_t q_scaling = 1;
+        sample_t vibrato_speed=0.0;
+        sample_t vibrato_depth=0.0;
+        sample_t shaper_amount=1.0;
+        sample_t q_scaling = 1.0;
         sample_t gain=0.5;
-        sample_t filter_cutoff = 10000;
-        sample_t filter_q = 0.05;
+        sample_t lowpass_filter_cutoff = 20000.0;
+        sample_t lowpass_filter_q = 0.05;
+        sample_t highpass_filter_cutoff = 30.0;
+        sample_t stereo_width = 1;
     };
 
     template<typename sample_t, typename frequency_t>
     voice_t<sample_t,frequency_t> initVoice(voice_t<sample_t,frequency_t> v, sample_t sampleRate){
-        v.amp_gate = false;
         v.sawtooth = stk_blit_saw<sample_t,frequency_t>(440.0, sampleRate);
         v.square = stk_blit_square<sample_t,frequency_t>(440.0, sampleRate);
-        
-        // v.exciter_envelope = ramp_t<sample_t>();
-        // v.amp_envelope = adsr_t<sample_t>();
+
         return v;
     }
 
@@ -133,9 +135,9 @@ namespace telegraph{
     }
 
     template<typename sample_t, typename frequency_t>
-    const inline bool isActive(const voice_t<sample_t,frequency_t>& v,const params_t<sample_t>& p){
+    const inline bool isActive(const voice_t<sample_t,frequency_t>& v){
         bool isActive = false;
-        if(v.amp_envelope.env.value<0.0001 && v.amp_envelope.env.index > p.amp_attack){
+        if((!v.amp_gate) && (v.amp_envelope.env.value<0.0001) ){
             isActive = false;
         } else {
             isActive = true;
@@ -152,48 +154,49 @@ namespace telegraph{
         switch(p.wave_mode){
             case SAW:  exciter = v.sawtooth.state; v.sawtooth = process<sample_t,frequency_t>(v.sawtooth, sampleRate); break;
             case SQUARE: exciter = v.square.state; v.square = process<sample_t,frequency_t>(v.square, sampleRate); break;
-            default: exciter = sine_t<sample_t,TABLE_SIZE>::lookup(v.phase); v.phase = update_phase_custom_period<sample_t,frequency_t>(v.phase, v.phi,1.0); break;
+            default: exciter = sine_t<sample_t, TABLE_SIZE>::lookup(v.phase); v.phase = update_phase_custom_period<sample_t,frequency_t>(v.phase, v.phi,1.0); break;
         }
 
         exciter = p.exciter_gain * exciter;
+        exciter *= v.amp_envelope.env.value;
+        sample_t fb1 = p.resonator_feedback;
+        sample_t xfb1 = p.resonator_cross_feedback;
 
-        sample_t sq_env = v.amp_envelope.env.value;
-        sample_t shaper_left = sq_env*(p.shaper_amount*sine_t<sample_t,TABLE_SIZE>::lookup(v.shaper_phase_left));
-        sample_t shaper_right = sq_env*(p.shaper_amount*cos_t<sample_t,TABLE_SIZE>::lookup(v.shaper_phase_right));
-        sample_t feedback_signal_left = -cos_t<sample_t,TABLE_SIZE>::lookup((p.resonator_feedback*v.resonator_left.y1 + p.resonator_cross_feedback*v.resonator_right.y1 - shaper_left)); //+ sq_env*sin(v.phase)
-        sample_t feedback_signal_right = cos_t<sample_t,TABLE_SIZE>::lookup((p.resonator_feedback*v.resonator_right.y1 - p.resonator_cross_feedback*v.resonator_left.y1 + shaper_right )); //+ sq_env*sin(v.phase)
-        sample_t resonator_input_left = exciter + feedback_signal_left;
-        sample_t resonator_input_right = exciter + feedback_signal_right;
+        sample_t feedback_signal_left = cos_t<sample_t, TABLE_SIZE>::lookup((fb1*v.resonator_left.y1 + xfb1*v.resonator_right.y1 ));
+        sample_t feedback_signal_right = cos_t<sample_t, TABLE_SIZE>::lookup((fb1*v.resonator_right.y1 - xfb1*v.resonator_left.y1 ));
+        
+        sample_t resonator_input_left = exciter + p.resonator_chaos_amount*feedback_signal_left;
         resonator_input_left *= 0.5;
-        resonator_input_right *= 0.5;
         v.resonator_left = process<sample_t, frequency_t>(v.resonator_left, resonator_input_left);
-        v.resonator_right = process<sample_t, frequency_t>(v.resonator_right, resonator_input_right);
-
-        v.highpass_left = update_onepole_hip<sample_t, frequency_t>(v.highpass_left,v.resonator_left.y1,5.0,sampleRate);
-        v.highpass_right = update_onepole_hip<sample_t, frequency_t>(v.highpass_right,v.resonator_right.y1,5.0,sampleRate);
-
-        sample_t mod_left = v.highpass_left.y*(1-exciter);
-        sample_t mod_right = v.highpass_right.y*(1-exciter);
-
-        v.out_left = (mod_left)*p.gain;
-        v.out_left = tanh_approx_pade<sample_t>(v.out_left);
+        sample_t scaled_resonator_output_L = tanh_approx_pade<sample_t>(v.resonator_left.y1);
+        scaled_resonator_output_L *= (1-exciter);
+        scaled_resonator_output_L *= 0.25*p.gain;
+        v.highpass_left = update_onepole_hip<sample_t, frequency_t>(v.highpass_left, scaled_resonator_output_L, p.highpass_filter_cutoff, sampleRate);
+        v.out_left = v.highpass_left.y;
         v.filter_left = update_biquad<sample_t,frequency_t>(v.filter_left, v.out_left);
         v.out_left = v.filter_left.y1;
         v.out_left *= v.amp_envelope.env.value;
         v.out_left *= v.amp_envelope.env.value;
-        v.out_left *= 0.5;
 
-        v.out_right = (mod_right)*p.gain;
-        v.out_right = tanh_approx_pade<sample_t>(v.out_right);
+        sample_t resonator_input_right = exciter + p.resonator_chaos_amount*feedback_signal_right;
+        resonator_input_right *= 0.5;
+        v.resonator_right = process<sample_t, frequency_t>(v.resonator_right, resonator_input_right);
+        sample_t scaled_resonator_output_R = tanh_approx_pade<sample_t>(v.resonator_right.y1);
+        scaled_resonator_output_R *= (1-exciter);
+        scaled_resonator_output_R *= 0.25*p.gain;
+        v.highpass_right = update_onepole_hip<sample_t, frequency_t>(v.highpass_right, scaled_resonator_output_R, p.highpass_filter_cutoff, sampleRate);
+        v.out_right = v.highpass_right.y;
         v.filter_right = update_biquad<sample_t,frequency_t>(v.filter_right, v.out_right);
         v.out_right = v.filter_right.y1;
         v.out_right *= v.amp_envelope.env.value;
         v.out_right *= v.amp_envelope.env.value;
-        v.out_right *= 0.5;
 
-        v.shaper_phase_left = update_phase_custom_period<sample_t,frequency_t>(v.shaper_phase_left, v.shaper_phi, 1.0);
-        v.shaper_phase_right = update_phase_custom_period<sample_t,frequency_t>(v.shaper_phase_right, v.shaper_phi, 1.0);
-      
+        auto one_minus_width = (1-p.stereo_width);
+        auto l = v.out_left;
+        auto r = v.out_right;
+        v.out_left += one_minus_width*r;
+        v.out_right += one_minus_width*l;
+
         return v;
         
     }
@@ -221,15 +224,28 @@ namespace telegraph{
         v.resonator_left = update_coefficients<sample_t,frequency_t>(v.resonator_left, resonator_frequency_L/*+p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
         v.resonator_right = update_coefficients<sample_t,frequency_t>(v.resonator_right, resonator_frequency_R/*-p.resonator_detune*/, p.resonator_q, 0.5, sampleRate);
 
-        v.filter_left = lowpass<sample_t,frequency_t>(v.filter_left,p.filter_cutoff,p.filter_q,sampleRate);
-        v.filter_right = lowpass<sample_t,frequency_t>(v.filter_right,p.filter_cutoff,p.filter_q,sampleRate);
-
-        // v.filter_left = setFilterParameters(v.filter_left,p.filter_cutoff,p.filter_q,sampleRate);
-        // v.filter_right = setFilterParameters(v.filter_right,p.filter_cutoff,p.filter_q,sampleRate);
+        v.filter_left = lowpass<sample_t,frequency_t>(v.filter_left,p.lowpass_filter_cutoff,p.lowpass_filter_q,sampleRate);
+        v.filter_right = lowpass<sample_t,frequency_t>(v.filter_right,p.lowpass_filter_cutoff,p.lowpass_filter_q,sampleRate);
 
         v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
         v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
+        
+        auto character = p.resonator_chaos_character;
+        if(character<0.33333){
+            character = 3.0*character;
+            params.resonator_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
+            params.resonator_cross_feedback = 0;
 
+        } else if (character<0.66666) {
+            character = 3.0*(character-0.33333);
+            params.resonator_cross_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
+            params.resonator_feedback = telegraph::scale_parameter<float>(1-character,0,100);
+
+        } else {
+            character = 3.0*(character-0.66666);
+            params.resonator_cross_feedback = telegraph::scale_parameter<float>(1-character,0.02,100);
+            params.resonator_feedback = 0;
+        }
         return v;
     }
 
@@ -270,30 +286,21 @@ namespace telegraph{
         const frequency_t sampleRate,
         const frequency_t controlRate
     ){
-        bool voiceWasAssigned = false;
-        
+        size_t indexOfQuietestVoice = 0;
+        sample_t minValue = 10000;
         for(size_t index=0; index<NUM_VOICES; index++){
-            if (!isActive(voices[index], params)){
-                voices[index] = noteOn<sample_t,frequency_t>(voices[index], params, noteNumber, sampleRate, controlRate);
-                voiceWasAssigned = true;
+            sample_t value = voices[index].amp_envelope.env.value;
+            if (!isActive(voices[index])){
+                indexOfQuietestVoice = index;
                 break;
             }
-        }
-
-        if(!voiceWasAssigned){
-            size_t indexOfQuietestVoice = 0;
-            sample_t minValue = 10000;
-            for(size_t index=0; index<NUM_VOICES; index++){
-                sample_t value = voices[index].amp_envelope.env.value;
-                if(value<minValue){
-                    minValue = value;
-                    indexOfQuietestVoice = index;
-                }
+            if(value<minValue){
+                minValue = value;
+                indexOfQuietestVoice = index;
             }
-
-            voices[indexOfQuietestVoice] = noteOn<sample_t,frequency_t>(voices[indexOfQuietestVoice], params, noteNumber, sampleRate, controlRate);
-
         }
+
+        voices[indexOfQuietestVoice] = noteOn<sample_t,frequency_t>(voices[indexOfQuietestVoice], params, noteNumber, sampleRate, controlRate);
 
         return voices;
     }
@@ -308,7 +315,7 @@ namespace telegraph{
         const frequency_t sampleRate
     ){
         for(size_t index=0; index<NUM_VOICES; index++){
-            if(isActive(voices[index],params) && voices[index].note==noteNumber){
+            if(isActive(voices[index]) && voices[index].note==noteNumber){
                 voices[index] = noteOff<sample_t,frequency_t>(voices[index]);
             }
         }
@@ -316,14 +323,30 @@ namespace telegraph{
     }
 
     template<typename sample_t>
-    sample_t denormalize(sample_t val, sample_t min, sample_t max){
+    sample_t scale_parameter(sample_t val, sample_t min, sample_t max){
         
         val = val>=0.0 && val<=1.0 ? val : 0.0;
         return val*(max-min) + min;
     }
 
     template<typename sample_t>
-    sample_t denormalize_exp(sample_t val, sample_t min, sample_t max, sample_t base){
+    sample_t scale_parameter_exp(sample_t val, sample_t min, sample_t max){
+        auto m = max<=0?0.0001:log(max);
+        auto n = min<=0?0.0001:log(min);
+        
+        return exp(scale_parameter<sample_t>(val,n,m));
+    }
+
+    template<typename sample_t>
+    sample_t scale_parameter_as_db(sample_t val){
+        if (val<=0) return 0;
+        
+        val = scale_parameter<sample_t>(val, -48.0, 0.0);
+        return pow(10.0, val/20.0);
+    }
+
+    template<typename sample_t>
+    sample_t scale_parameter_weird(sample_t val, sample_t min, sample_t max, sample_t base){
         
         val = val>0.0 && val<=1.0 ? val : 0.0;
         val = val>0.0 && base!=1?pow(base,val)/(base-1):val;
@@ -331,125 +354,20 @@ namespace telegraph{
     }
 
     template<typename sample_t, int SIZE>
-    sample_t denormalize_set(sample_t val,  const sample_t (&options) [SIZE]){
+    sample_t scale_parameter_from_set(sample_t val,  const sample_t (&options) [SIZE]){
         
         val = val>=0 && val<=1 ? val : 0;
         return options[size_t(floor(val*(SIZE-1)))];
     }
 
     template<typename input_t, typename output_t, int SIZE>
-    output_t denormalize_set(input_t val,  const output_t (&options) [SIZE]){
+    output_t scale_parameter_from_set(input_t val,  const output_t (&options) [SIZE]){
         val = val>=0 && val<=1 ? val : 0;
         return options[size_t(floor(val*(SIZE-1)))];
     }
 
-    template<typename sample_t>
-    params_t<sample_t> setFeedback(params_t<sample_t> v, sample_t resonator_feedback){
-        v.resonator_feedback = resonator_feedback;
-        return v;
-    }
-    template<typename sample_t>
-    params_t<sample_t> setFeedback(params_t<sample_t> v, sample_t resonator_feedback, sample_t min, sample_t max){
-        resonator_feedback = denormalize<sample_t>(resonator_feedback,min,max);
-        return setFeedback(v, resonator_feedback);
-    }
 
-    template<typename sample_t>
-    params_t<sample_t> setQ(params_t<sample_t> v, sample_t resonator_q){
-        v.resonator_q = resonator_q;
-        return v;
-    }
 
-    template<typename sample_t>
-    params_t<sample_t> setQ(params_t<sample_t> v, sample_t resonator_q, sample_t min, sample_t max){
-        resonator_q = denormalize<sample_t>(resonator_q,min,max);
-        return setQ(v, resonator_q);
-    }
-
-    using algae::dsp::core::units::msToSamples;
-
-    template<typename sample_t>
-    sample_t convertTimeParameter(sample_t param, sample_t sampleRate){
-        sample_t converted = msToSamples<sample_t,sample_t>(param, sampleRate);
-        return converted;
-    }
-
-    template<typename sample_t>
-    sample_t convertTimeParameter(sample_t amp_attack, sample_t min, sample_t max, sample_t sampleRate){
-        amp_attack = denormalize<sample_t>(amp_attack, min, max);
-        return convertTimeParameter(amp_attack, sampleRate);
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpAttack(params_t<sample_t> v, sample_t amp_attack, sample_t sampleRate){
-        v.amp_attack = msToSamples<sample_t,sample_t>(amp_attack, sampleRate);
-        return v;
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpAttack(params_t<sample_t> v, sample_t amp_attack, sample_t min, sample_t max, sample_t sampleRate){
-        amp_attack = denormalize<sample_t>(amp_attack, min, max);
-        return setAmpAttack(v, amp_attack, sampleRate);
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpDecay(params_t<sample_t> v, sample_t amp_decay, sample_t sampleRate){
-        v.amp_decay = msToSamples<sample_t,sample_t>(amp_decay, sampleRate);
-        return v;
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpDecay(params_t<sample_t> v, sample_t amp_decay, sample_t min, sample_t max, sample_t sampleRate){
-        amp_decay = denormalize<sample_t>(amp_decay,min,max);
-        return setAmpDecay(v, amp_decay, sampleRate);
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpSustain(params_t<sample_t> v, sample_t amp_sustain){
-        v.amp_sustain = amp_sustain;
-        return v;
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpSustain(params_t<sample_t> v, sample_t amp_sustain, sample_t min, sample_t max){
-        amp_sustain = denormalize<sample_t>(amp_sustain,min,max);
-        return setAmpSustain(v, amp_sustain);
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpRelease(params_t<sample_t> v, sample_t amp_release, sample_t sampleRate){
-        v.amp_release = msToSamples<sample_t,sample_t>(amp_release, sampleRate);
-        return v;
-    }
-
-    template<typename sample_t>
-    params_t<sample_t> setAmpRelease(params_t<sample_t> v, sample_t amp_release, sample_t min, sample_t max, sample_t sampleRate){
-        amp_release = denormalize<sample_t>(amp_release,min,max);
-        return setAmpRelease(v, amp_release, sampleRate);
-    }
-
-    // template<typename sample_t>
-    // params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t sampleRate){
-    //     v.exciter_attack = msToSamples<sample_t,sample_t>(exciter_attack, sampleRate);
-    //     return v;
-    // }
-
-    // template<typename sample_t>
-    // params_t<sample_t> setExciterAttack(params_t<sample_t> v, sample_t exciter_attack, sample_t min, sample_t max, sample_t sampleRate){
-    //     exciter_attack = denormalize<sample_t>(exciter_attack, min, max);
-    //     return setExciterAttack(v, exciter_attack, sampleRate);
-    // }
-
-    // template<typename sample_t>
-    // params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t sampleRate){
-    //     v.exciter_decay = msToSamples<sample_t,sample_t>(exciter_decay, sampleRate);
-    //     return v;
-    // }
-
-    // template<typename sample_t>
-    // params_t<sample_t> setExciterDecay(params_t<sample_t> v, sample_t exciter_decay, sample_t min, sample_t max, sample_t sampleRate){
-    //     exciter_decay = denormalize<sample_t>(exciter_decay,min,max);
-    //     return setExciterDecay(v, exciter_decay, sampleRate);
-    // }
+    
 
 }

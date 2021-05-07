@@ -23,6 +23,86 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                        )
 #endif
 {
+    addParameter (exciter_pitch = new juce::AudioParameterChoice ("exciter_pitch", // parameterID
+                                                    "Exciter Pitch", // parameter name
+                                                    {"-12", "-7", "0", "7", "+12"},
+                                                    2  // default index
+                                                    ));
+    addParameter (exciter_waveform = new juce::AudioParameterChoice ("exciter_waveform", // parameterID
+                                                    "Exciter Waveform", // parameter name
+                                                    {"SINE", "SAW", "SQUARE"},
+                                                    0  // default index
+                                                    )); 
+    addParameter (exciter_gain = new juce::AudioParameterFloat ("exciter_gain", // parameterID
+                                                    "Exciter Gain", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.5f)); // default value
+    addParameter (resonator_pitch = new juce::AudioParameterChoice ("resonator_pitch", // parameterID
+                                                    "Resonator Pitch", // parameter name
+                                                    {"-12", "-7", "0", "7", "+12"},
+                                                    2  // default index
+                                                    ));
+    addParameter (resonator_q = new juce::AudioParameterFloat ("resonator_q", // parameterID
+                                                    "Resonator Q", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.5f)); // default value
+    addParameter (resonator_chaos_character = new juce::AudioParameterFloat ("resonator_chaos_character", // parameterID
+                                                    "Resonator Chaos Character", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.0f)); // default value
+    addParameter (resonator_chaos_amount = new juce::AudioParameterFloat ("resonator_chaos_amount", // parameterID
+                                                    "Resonator Chaos Amount", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.0f)); // default value
+    addParameter (attack = new juce::AudioParameterFloat ("attack", // parameterID
+                                                    "Attack", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.2f)); // default value
+    addParameter (decay = new juce::AudioParameterFloat ("decay", // parameterID
+                                                    "Decay", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.2f)); // default value
+    addParameter (sustain = new juce::AudioParameterFloat ("sustain", // parameterID
+                                                    "Sustain", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    1.0f)); // default value
+    addParameter (release = new juce::AudioParameterFloat ("release", // parameterID
+                                                    "Release", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.2f)); // default value
+    addParameter (lowpass_cutoff = new juce::AudioParameterFloat ("lowpass_cutoff", // parameterID
+                                                    "Lowpass Cutoff", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    1.0f)); // default value
+    addParameter (lowpass_q = new juce::AudioParameterFloat ("lowpass_q", // parameterID
+                                                    "Lowpass Q", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.2f)); // default value
+    addParameter (highpass_cutoff = new juce::AudioParameterFloat ("highpass_cutoff", // parameterID
+                                                    "Highpass Cutoff", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.001f)); // default value                                            
+    addParameter (stereo_width = new juce::AudioParameterFloat ("stereo_width", // parameterID
+                                                "Stereo Width", // parameter name
+                                                0.0f,   // minimum value
+                                                1.0f,   // maximum value
+                                                0.75f)); // default value
+    addParameter (gain = new juce::AudioParameterFloat ("gain", // parameterID
+                                                    "Gain", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.75f)); // default value
 }
 
 TelegraphAudioProcessor::~TelegraphAudioProcessor()
@@ -94,7 +174,6 @@ void TelegraphAudioProcessor::changeProgramName (int index, const juce::String& 
 //==============================================================================
 void TelegraphAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    this->sampleRate = sampleRate;
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     for(int index=0; index<NUMBER_OF_VOICES; index++){
@@ -185,8 +264,8 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // This is here to avoid people getting screaming feedback
     // when they first compile a plugin, but obviously you don't need to keep
     // this code if your algorithm always overwrites all the output channels.
-    // for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-    //     buffer.clear (i, 0, buffer.getNumSamples());
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear (i, 0, buffer.getNumSamples());
 
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
@@ -200,33 +279,52 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     {
         auto outL = buffer.getWritePointer(0, sample_index);
         auto outR = buffer.getWritePointer(1, sample_index);
-        // phase+=phase_inc;
-        // *outL = 0.125 * sin(phase);
-        // *outR = 0.125 * sin(phase);
+
 
         for(int voiceIndex=0; voiceIndex<NUMBER_OF_VOICES; voiceIndex++){
     
         // ..do something to the data...
+        
             
-        //if voice is active
-        if(telegraph::isActive<double,double>(voices[voiceIndex], params)){
-            voices[voiceIndex] = telegraph::process<double, double, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
-            
-            if(sample_index%controlRateDivisor==0){
-                voices[voiceIndex] = telegraph::process_control<double,double>(voices[voiceIndex], params, SR, CR);
-            }
-            *outL += voices[voiceIndex].out_left; 
-            *outR += voices[voiceIndex].out_right; 
+            //if voice is active
+            if(telegraph::isActive<double,double>(voices[voiceIndex])){
+                voices[voiceIndex] = telegraph::process<double, double, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
+                
+                if(sample_index%controlRateDivisor==0){
+                    updateSynthParams();
+                    voices[voiceIndex] = telegraph::process_control<double,double>(voices[voiceIndex], params, SR, CR);
+                }
+                *outL += voices[voiceIndex].out_left; 
+                *outR += voices[voiceIndex].out_right; 
 
-            
-            
-        }
+                
+                
+            }
 
 
         }
 
     }
 
+}
+
+void TelegraphAudioProcessor::updateSynthParams(){
+    params.exciter_gain = telegraph::scale_parameter_as_db<float>(exciter_gain->get());
+    params.wave_mode = telegraph::scale_parameter_from_set<int, telegraph::Wave>(exciter_waveform->getIndex(),{telegraph::Wave::SINE,telegraph::Wave::SAW,telegraph::Wave::SQUARE});
+    params.resonator_q = telegraph::scale_parameter<float>(telegraph::scale_parameter_as_db<float>(resonator_q->get()),1.0, 100.0);
+    params.resonator_chaos_character = resonator_chaos_character->get();
+   
+    params.resonator_chaos_character = telegraph::scale_parameter_exp<float>(resonator_chaos_character->get(),0,100);
+    params.resonator_chaos_amount = telegraph::scale_parameter_as_db<float>(resonator_chaos_amount->get());
+    params.amp_attack = telegraph::scale_parameter_exp<float>(attack->get(), 4.0, 4800.0);
+    params.amp_decay = telegraph::scale_parameter_exp<float>(decay->get(), 4.0, 4800.0);
+    params.amp_sustain = sustain->get();
+    params.amp_release = telegraph::scale_parameter_exp<float>(release->get(), 4.0, 4800.0);
+    params.lowpass_filter_cutoff = telegraph::scale_parameter_exp<float>(lowpass_cutoff->get(),200.0,20000.0);
+    params.lowpass_filter_q = lowpass_q->get();
+    // params.highpass_filter_cutoff = telegraph::scale_parameter<float>(highpass_cutoff->get(),30.0,1000.0);
+    params.stereo_width = stereo_width->get();
+    params.gain = telegraph::scale_parameter_as_db<float>(gain->get());
 }
 
 //==============================================================================
@@ -237,7 +335,7 @@ bool TelegraphAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* TelegraphAudioProcessor::createEditor()
 {
-    return new THISISATESTAudioProcessorEditor (*this);
+    return new GenericAudioProcessorEditor(*this);//new TelegraphAudioProcessorEditor (*this);
 }
 
 //==============================================================================

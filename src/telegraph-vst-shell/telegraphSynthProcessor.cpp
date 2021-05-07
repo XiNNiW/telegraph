@@ -380,24 +380,24 @@ void TelegraphSynthProcessor::recalculate ()
 	auto SR = getSampleRate();
 	auto CR = getSampleRate()/KMAX;
 
-	parameters.resonator_q = telegraph::denormalize_exp<double>(double(params[0]), 0.0, 10.0,100.0); 
-	parameters.resonator_feedback = telegraph::denormalize_exp<double>(double(params[1]), 0.0, 100.0, 1000.0); 
-	parameters.amp_attack = telegraph::denormalize_exp<double>(double(params[2]), 0.0, 4.0,100.0)*CR; 
-	parameters.amp_decay = telegraph::denormalize_exp<double>(double(params[3]), 0.0, 4.0,100.0)*CR; 
+	parameters.resonator_q = telegraph::scale_parameter_weird<double>(double(params[0]), 0.0, 10.0,100.0); 
+	parameters.resonator_feedback = telegraph::scale_parameter_weird<double>(double(params[1]), 0.0, 100.0, 1000.0); 
+	parameters.amp_attack = telegraph::scale_parameter_weird<double>(double(params[2]), 0.0, 4.0,100.0)*CR; 
+	parameters.amp_decay = telegraph::scale_parameter_weird<double>(double(params[3]), 0.0, 4.0,100.0)*CR; 
 	parameters.amp_sustain = double(params[4]); 
-	parameters.amp_release = telegraph::denormalize_exp<double>(double(params[5]), 0.0, 4.0,100.0)*CR;
-	parameters.vibrato_depth = telegraph::denormalize_exp<double>(double(params[6]), 0.0, 1.0,100.0);
-	parameters.vibrato_speed = telegraph::denormalize<double>(double(params[7]), 0.0, 4.0);
+	parameters.amp_release = telegraph::scale_parameter_weird<double>(double(params[5]), 0.0, 4.0,100.0)*CR;
+	parameters.vibrato_depth = telegraph::scale_parameter_weird<double>(double(params[6]), 0.0, 1.0,100.0);
+	parameters.vibrato_speed = telegraph::scale_parameter<double>(double(params[7]), 0.0, 4.0);
 	
-	parameters.osc_tune = telegraph::denormalize_set<double>(double(params[8]), {0.25, 0.5, 1, 2, 3, 4});
-	parameters.resonater_tune_L = telegraph::denormalize_set<double>(double(params[9]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
-	parameters.filter_q = telegraph::denormalize<double>(double(params[10]), 0.0, 1.0);
-	parameters.shaper_tune = telegraph::denormalize_set<double>(double(params[11]), {0.25, 0.5, 1, 1.25, 1.5, 2, 3, 4});
-	parameters.resonator_cross_feedback = telegraph::denormalize_exp<double>(double(params[12]), 0.0, 1.0, 100.0);
-	parameters.exciter_gain = telegraph::denormalize<double>(double(params[13]), 0.0, 1.0);
-	parameters.shaper_amount = telegraph::denormalize_exp<double>(double(params[14]), 0.0, 0.9, 1000.0);
-	parameters.wave_mode = telegraph::denormalize_set<double,telegraph::Wave>(params[15], {telegraph::SINE,telegraph::SQUARE, telegraph::SAW});
-	parameters.filter_cutoff = telegraph::denormalize<double>(params[16], 20, 20000.0);
+	parameters.osc_tune = telegraph::scale_parameter_from_set<double>(double(params[8]), {0.25, 0.5, 1, 2, 3, 4});
+	parameters.resonater_tune_L = telegraph::scale_parameter_from_set<double>(double(params[9]), {0.25, 0.5, 1, 1.5, 2, 3, 4});
+	parameters.lowpass_filter_q = telegraph::scale_parameter<double>(double(params[10]), 0.0, 1.0);
+	parameters.shaper_tune = telegraph::scale_parameter_from_set<double>(double(params[11]), {0.25, 0.5, 1, 1.25, 1.5, 2, 3, 4});
+	parameters.resonator_cross_feedback = telegraph::scale_parameter_weird<double>(double(params[12]), 0.0, 1.0, 100.0);
+	parameters.exciter_gain = telegraph::scale_parameter<double>(double(params[13]), 0.0, 1.0);
+	parameters.shaper_amount = telegraph::scale_parameter_weird<double>(double(params[14]), 0.0, 0.9, 1000.0);
+	parameters.wave_mode = telegraph::scale_parameter_from_set<double,telegraph::Wave>(params[15], {telegraph::SINE,telegraph::SQUARE, telegraph::SAW});
+	parameters.lowpass_filter_cutoff = telegraph::scale_parameter<double>(params[16], 20, 20000.0);
 	
 }
 

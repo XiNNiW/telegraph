@@ -57,10 +57,26 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    void updateSynthParams();
     std::array<telegraph::voice_t<double,double>,NUMBER_OF_VOICES> voices;
     telegraph::params_t<double> params;
-    double sampleRate=44100;
-    double phase=0;
+    juce::AudioParameterChoice* exciter_pitch;
+    juce::AudioParameterChoice* exciter_waveform;
+    juce::AudioParameterFloat* exciter_gain;
+
+    juce::AudioParameterFloat* resonator_q;
+    juce::AudioParameterChoice* resonator_pitch;
+    juce::AudioParameterFloat* resonator_chaos_character;
+    juce::AudioParameterFloat* resonator_chaos_amount;
+    juce::AudioParameterFloat* attack;
+    juce::AudioParameterFloat* decay;
+    juce::AudioParameterFloat* sustain;
+    juce::AudioParameterFloat* release;
+    juce::AudioParameterFloat* lowpass_cutoff;
+    juce::AudioParameterFloat* lowpass_q;
+    juce::AudioParameterFloat* highpass_cutoff;
+    juce::AudioParameterFloat* stereo_width;
+    juce::AudioParameterFloat* gain;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessor)
 };
