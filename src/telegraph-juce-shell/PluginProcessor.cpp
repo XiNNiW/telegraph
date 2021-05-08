@@ -52,7 +52,7 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     "Resonator Chaos Character", // parameter name
                                                     0.0f,   // minimum value
                                                     1.0f,   // maximum value
-                                                    0.0f)); // default value
+                                                    1.0f)); // default value
     addParameter (resonator_chaos_amount = new juce::AudioParameterFloat ("resonator_chaos_amount", // parameterID
                                                     "Resonator Chaos Amount", // parameter name
                                                     0.0f,   // minimum value
@@ -77,7 +77,7 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     "Release", // parameter name
                                                     0.0f,   // minimum value
                                                     1.0f,   // maximum value
-                                                    0.2f)); // default value
+                                                    0.333f)); // default value
     addParameter (lowpass_cutoff = new juce::AudioParameterFloat ("lowpass_cutoff", // parameterID
                                                     "Lowpass Cutoff", // parameter name
                                                     0.0f,   // minimum value
@@ -92,12 +92,12 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     "Highpass Cutoff", // parameter name
                                                     0.0f,   // minimum value
                                                     1.0f,   // maximum value
-                                                    0.001f)); // default value                                            
+                                                    0.0f)); // default value                                            
     addParameter (stereo_width = new juce::AudioParameterFloat ("stereo_width", // parameterID
                                                 "Stereo Width", // parameter name
                                                 0.0f,   // minimum value
                                                 1.0f,   // maximum value
-                                                0.75f)); // default value
+                                                1.0f)); // default value
     addParameter (gain = new juce::AudioParameterFloat ("gain", // parameterID
                                                     "Gain", // parameter name
                                                     0.0f,   // minimum value
@@ -310,9 +310,13 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
 void TelegraphAudioProcessor::updateSynthParams(){
     params.exciter_gain = telegraph::scale_parameter_as_db<float>(exciter_gain->get());
-    params.wave_mode = telegraph::scale_parameter_from_set<int, telegraph::Wave>(exciter_waveform->getIndex(),{telegraph::Wave::SINE,telegraph::Wave::SAW,telegraph::Wave::SQUARE});
+    params.exciter_ratio = telegraph::scale_parameter_from_set<int, float>(exciter_pitch->getIndex(),{0.5, 2.0/3.0, 1, 3.0/2.0, 2});
+    params.wave_mode = telegraph::scale_parameter_from_set<int, telegraph::Wave>(exciter_waveform->getIndex(), {telegraph::Wave::SINE,telegraph::Wave::SAW,telegraph::Wave::SQUARE});
     params.resonator_q = telegraph::scale_parameter<float>(telegraph::scale_parameter_as_db<float>(resonator_q->get()),1.0, 100.0);
     params.resonator_chaos_character = resonator_chaos_character->get();
+    auto character = params.resonator_chaos_character;
+    params.resonator_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
+    params.resonater_ratio = telegraph::scale_parameter_from_set<int, float>(resonator_pitch->getIndex(),{0.5, 2.0/3.0, 1, 3.0/2.0, 2});
    
     params.resonator_chaos_character = telegraph::scale_parameter_exp<float>(resonator_chaos_character->get(),0,100);
     params.resonator_chaos_amount = telegraph::scale_parameter_as_db<float>(resonator_chaos_amount->get());
@@ -322,7 +326,7 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.amp_release = telegraph::scale_parameter_exp<float>(release->get(), 4.0, 4800.0);
     params.lowpass_filter_cutoff = telegraph::scale_parameter_exp<float>(lowpass_cutoff->get(),200.0,20000.0);
     params.lowpass_filter_q = lowpass_q->get();
-    // params.highpass_filter_cutoff = telegraph::scale_parameter<float>(highpass_cutoff->get(),30.0,1000.0);
+    params.highpass_filter_cutoff = telegraph::scale_parameter<float>(highpass_cutoff->get(),30.0,1000.0);
     params.stereo_width = stereo_width->get();
     params.gain = telegraph::scale_parameter_as_db<float>(gain->get());
 }

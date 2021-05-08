@@ -45,11 +45,51 @@ using algae::dsp::core::filter::setFilterParameters;
 
 
 namespace telegraph{
+        template<typename sample_t>
+    sample_t scale_parameter(sample_t val, sample_t min, sample_t max){
+        
+        val = val>=0.0 && val<=1.0 ? val : 0.0;
+        return val*(max-min) + min;
+    }
+
+    template<typename sample_t>
+    sample_t scale_parameter_exp(sample_t val, sample_t min, sample_t max){
+        auto m = max<=0?0.0001:log(max);
+        auto n = min<=0?0.0001:log(min);
+        
+        return exp(scale_parameter<sample_t>(val,n,m));
+    }
+
+    template<typename sample_t>
+    sample_t scale_parameter_as_db(sample_t val){
+        if (val<=0) return 0;
+        
+        val = scale_parameter<sample_t>(val, -48.0, 0.0);
+        return pow(10.0, val/20.0);
+    }
+
+    template<typename sample_t, int SIZE>
+    sample_t scale_parameter_from_set(sample_t val,  const sample_t (&options) [SIZE]){
+        
+        val = val>=0 && val<=1 ? val : 0;
+        return options[size_t(floor(val*(SIZE-1)))];
+    }
+
+    template<typename input_t, typename output_t, int SIZE>
+    output_t scale_parameter_from_set(input_t val,  const output_t (&options) [SIZE]){
+        val = val>=0 && val<=1 ? val : 0;
+        return options[size_t(floor(val*(SIZE-1)))];
+    }
     enum Wave {
         SINE,
         SAW,
         SQUARE,
         TRI
+    };
+
+    enum FeedbackMode {
+        COS,
+        TANH
     };
     
     template<typename sample_t, typename frequency_t>
@@ -103,8 +143,8 @@ namespace telegraph{
         int feedback_decay=2400;
         int noise_attack=48;
         int noise_decay=2400;
-        sample_t osc_tune=1;
-        sample_t resonater_tune_L=1;
+        sample_t exciter_ratio=1;
+        sample_t resonater_ratio=1;
         sample_t resonater_tune_R=1;
         sample_t shaper_tune=1;
         sample_t vibrato_speed=0.0;
@@ -146,9 +186,20 @@ namespace telegraph{
         return isActive;
     }
 
+    template<typename sample_t, typename frequency_t, int TABLE_SIZE>
+    const inline sample_t process_feedback_signal(const voice_t<sample_t,frequency_t>& v, const params_t<sample_t>& p, const frequency_t& sampleRate){
+        sample_t fb = p.resonator_feedback;
+        sample_t feedback_signal; 
+        switch(p.feedback_mode){
+            case TANH:  feedback_signal = tanh_approx_pade<sample_t>(-fb*v.resonator_left.y1); break;
+            default: feedback_signal = cos_t<sample_t, TABLE_SIZE>::lookup(-fb*v.resonator_left.y1); break;
+        }
+        return feedback_signal;
+    }
+
 
     template<typename sample_t, typename frequency_t, int TABLE_SIZE>
-    const inline voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, params_t<sample_t> p, frequency_t sampleRate){
+    const inline voice_t<sample_t,frequency_t> process(voice_t<sample_t,frequency_t> v, const params_t<sample_t>& p, const frequency_t& sampleRate){
         
         sample_t exciter;
         switch(p.wave_mode){
@@ -160,11 +211,7 @@ namespace telegraph{
         exciter = p.exciter_gain * exciter;
         exciter *= v.amp_envelope.env.value;
         sample_t fb1 = p.resonator_feedback;
-        sample_t xfb1 = p.resonator_cross_feedback;
-
-        sample_t feedback_signal_left = cos_t<sample_t, TABLE_SIZE>::lookup((fb1*v.resonator_left.y1 + xfb1*v.resonator_right.y1 ));
-        sample_t feedback_signal_right = cos_t<sample_t, TABLE_SIZE>::lookup((fb1*v.resonator_right.y1 - xfb1*v.resonator_left.y1 ));
-        
+        sample_t feedback_signal_left = cos_t<sample_t, TABLE_SIZE>::lookup((-fb1*v.resonator_left.y1));
         sample_t resonator_input_left = exciter + p.resonator_chaos_amount*feedback_signal_left;
         resonator_input_left *= 0.5;
         v.resonator_left = process<sample_t, frequency_t>(v.resonator_left, resonator_input_left);
@@ -178,6 +225,7 @@ namespace telegraph{
         v.out_left *= v.amp_envelope.env.value;
         v.out_left *= v.amp_envelope.env.value;
 
+        sample_t feedback_signal_right = cos_t<sample_t, TABLE_SIZE>::lookup((fb1*v.resonator_right.y1 ));
         sample_t resonator_input_right = exciter + p.resonator_chaos_amount*feedback_signal_right;
         resonator_input_right *= 0.5;
         v.resonator_right = process<sample_t, frequency_t>(v.resonator_right, resonator_input_right);
@@ -210,13 +258,13 @@ namespace telegraph{
         v.lfo_phase += (0.99999-v.amp_envelope.env.value)*v.lfo_value;
 
         switch(p.wave_mode){
-            case SAW: v.sawtooth = setFrequency<sample_t, frequency_t>(v.sawtooth, v.frequency*p.osc_tune+v.lfo_value, sampleRate); break;
-            case SQUARE: v.square = setFrequency<sample_t, frequency_t>(v.square, v.frequency*p.osc_tune+v.lfo_value, sampleRate); break;
-            default: v.phi = (v.frequency*p.osc_tune+v.lfo_value)/sampleRate; break;
+            case SAW: v.sawtooth = setFrequency<sample_t, frequency_t>(v.sawtooth, v.frequency*p.exciter_ratio+v.lfo_value, sampleRate); break;
+            case SQUARE: v.square = setFrequency<sample_t, frequency_t>(v.square, v.frequency*p.exciter_ratio+v.lfo_value, sampleRate); break;
+            default: v.phi = (v.frequency*p.exciter_ratio+v.lfo_value)/sampleRate; break;
         }
 
-        frequency_t resonator_frequency_L = v.frequency*p.resonater_tune_L;
-        frequency_t resonator_frequency_R = v.frequency*p.resonater_tune_L;
+        frequency_t resonator_frequency_L = v.frequency*p.resonater_ratio;
+        frequency_t resonator_frequency_R = v.frequency*p.resonater_ratio;
 
         resonator_frequency_L = resonator_frequency_L==0?1:resonator_frequency_L;
         resonator_frequency_R = resonator_frequency_R==0?1:resonator_frequency_R;
@@ -229,23 +277,8 @@ namespace telegraph{
 
         v.amp_envelope = update_adsr<sample_t>(v.amp_envelope, v.amp_gate, p.amp_attack, p.amp_decay, p.amp_sustain, p.amp_release);
         v.exciter_envelope = update_ad<sample_t>(v.exciter_envelope, p.feedback_attack, p.feedback_decay);
+    
         
-        auto character = p.resonator_chaos_character;
-        if(character<0.33333){
-            character = 3.0*character;
-            params.resonator_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
-            params.resonator_cross_feedback = 0;
-
-        } else if (character<0.66666) {
-            character = 3.0*(character-0.33333);
-            params.resonator_cross_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
-            params.resonator_feedback = telegraph::scale_parameter<float>(1-character,0,100);
-
-        } else {
-            character = 3.0*(character-0.66666);
-            params.resonator_cross_feedback = telegraph::scale_parameter<float>(1-character,0.02,100);
-            params.resonator_feedback = 0;
-        }
         return v;
     }
 
@@ -261,9 +294,9 @@ namespace telegraph{
         v.shaper_phi = p.shaper_tune*freq/sampleRate;
         
         switch(p.wave_mode){
-            case SAW: v.sawtooth = setFrequency(v.sawtooth, freq*p.osc_tune, sampleRate); break;
-            case SQUARE: v.square = setFrequency(v.square, freq*p.osc_tune, sampleRate); break;
-            default: v.phi = freq*p.osc_tune/sampleRate; break;
+            case SAW: v.sawtooth = setFrequency(v.sawtooth, freq*p.exciter_ratio, sampleRate); break;
+            case SQUARE: v.square = setFrequency(v.square, freq*p.exciter_ratio, sampleRate); break;
+            default: v.phi = freq*p.exciter_ratio/sampleRate; break;
         }
 
         return process_control(v, p, sampleRate, controlRate);
@@ -322,52 +355,6 @@ namespace telegraph{
         return voices;
     }
 
-    template<typename sample_t>
-    sample_t scale_parameter(sample_t val, sample_t min, sample_t max){
-        
-        val = val>=0.0 && val<=1.0 ? val : 0.0;
-        return val*(max-min) + min;
-    }
 
-    template<typename sample_t>
-    sample_t scale_parameter_exp(sample_t val, sample_t min, sample_t max){
-        auto m = max<=0?0.0001:log(max);
-        auto n = min<=0?0.0001:log(min);
-        
-        return exp(scale_parameter<sample_t>(val,n,m));
-    }
-
-    template<typename sample_t>
-    sample_t scale_parameter_as_db(sample_t val){
-        if (val<=0) return 0;
-        
-        val = scale_parameter<sample_t>(val, -48.0, 0.0);
-        return pow(10.0, val/20.0);
-    }
-
-    template<typename sample_t>
-    sample_t scale_parameter_weird(sample_t val, sample_t min, sample_t max, sample_t base){
-        
-        val = val>0.0 && val<=1.0 ? val : 0.0;
-        val = val>0.0 && base!=1?pow(base,val)/(base-1):val;
-        return val*(max-min) + min;
-    }
-
-    template<typename sample_t, int SIZE>
-    sample_t scale_parameter_from_set(sample_t val,  const sample_t (&options) [SIZE]){
-        
-        val = val>=0 && val<=1 ? val : 0;
-        return options[size_t(floor(val*(SIZE-1)))];
-    }
-
-    template<typename input_t, typename output_t, int SIZE>
-    output_t scale_parameter_from_set(input_t val,  const output_t (&options) [SIZE]){
-        val = val>=0 && val<=1 ? val : 0;
-        return options[size_t(floor(val*(SIZE-1)))];
-    }
-
-
-
-    
 
 }
