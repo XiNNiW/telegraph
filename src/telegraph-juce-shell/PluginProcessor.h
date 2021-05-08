@@ -58,8 +58,8 @@ public:
 
 private:
     void updateSynthParams();
-    std::array<telegraph::voice_t<double,double>,NUMBER_OF_VOICES> voices;
-    telegraph::params_t<double> params;
+    std::array<telegraph::voice_t<float,float, 2>,NUMBER_OF_VOICES> voices;
+    telegraph::params_t<float> params;
     juce::AudioParameterChoice* exciter_pitch;
     juce::AudioParameterChoice* exciter_waveform;
     juce::AudioParameterFloat* exciter_gain;

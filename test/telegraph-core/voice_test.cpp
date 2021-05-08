@@ -21,22 +21,22 @@
 //     };
 //     telegraph::voice_t<double> v = telegraph::initVoice<double>(telegraph::voice_t<double>(),44100);
 //     v = telegraph::process<double,double>(v,p, 44100);
-//     ASSERT_LT(v.out_left, 1.1);
-//     ASSERT_GT(v.out_left, -1.1);
+//     ASSERT_LT(v.output, 1.1);
+//     ASSERT_GT(v.output, -1.1);
 
 //     v = telegraph::process<double,double>(v, p, 44100.0);
 //     v = telegraph::process<double,double>(v, p, 44100.0);
 //     v = telegraph::process<double,double>(v, p, 44100.0);
-//     ASSERT_LT(v.out_left, 1.1);
-//     ASSERT_GT(v.out_left, -1.1);
+//     ASSERT_LT(v.output, 1.1);
+//     ASSERT_GT(v.output, -1.1);
 
 //     v = telegraph::noteOn<double>(v,p,60.0,44100.0);
 
 //     v = telegraph::process<double,double>(v, p, 44100.0);
 //     v = telegraph::process<double,double>(v, p, 44100.0);
 //     v = telegraph::process<double,double>(v, p, 44100.0);
-//     ASSERT_LT(v.out_left, 1.1);
-//     ASSERT_GT(v.out_left, -1.1);
+//     ASSERT_LT(v.output, 1.1);
+//     ASSERT_GT(v.output, -1.1);
 
 // }
 

@@ -177,7 +177,7 @@ void TelegraphAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     for(int index=0; index<NUMBER_OF_VOICES; index++){
-        voices[index] = telegraph::initVoice<double,double>(voices[index], sampleRate);
+        voices[index] = telegraph::initVoice<float, float>(voices[index], sampleRate);
     }
 }
 
@@ -218,9 +218,9 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-    const double SR = this->getSampleRate();
+    const float SR = this->getSampleRate();
     const int controlRateDivisor = 32;
-    const double CR = SR/32;
+    const float CR = SR/32;
     
 
     if(!midiMessages.isEmpty()){
@@ -228,11 +228,11 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             MidiMessage m = it.getMessage();
             if (m.isNoteOn())
             {
-                voices = telegraph::playNote<double, double, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(),SR,CR);
+                voices = telegraph::playNote<float, float, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(),SR,CR);
             }
             else if (m.isNoteOff())
             {
-                voices = telegraph::releaseNote<double, double, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(),SR);
+                voices = telegraph::releaseNote<float, float, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(),SR);
                 
             }
             else if (m.isChannelPressure())
@@ -287,17 +287,15 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
         
             
             //if voice is active
-            if(telegraph::isActive<double,double>(voices[voiceIndex])){
-                voices[voiceIndex] = telegraph::process<double, double, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
+            if(telegraph::isActive<float, float>(voices[voiceIndex])){
+                voices[voiceIndex] = telegraph::process<float, float, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
                 
                 if(sample_index%controlRateDivisor==0){
                     updateSynthParams();
-                    voices[voiceIndex] = telegraph::process_control<double,double>(voices[voiceIndex], params, SR, CR);
+                    voices[voiceIndex] = telegraph::process_control<float, float>(voices[voiceIndex], params, SR, CR);
                 }
-                *outL += voices[voiceIndex].out_left; 
-                *outR += voices[voiceIndex].out_right; 
-
-                
+                *outL += voices[voiceIndex].output[0]; 
+                *outR += voices[voiceIndex].output[1]; 
                 
             }
 
