@@ -177,7 +177,7 @@ void TelegraphAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     for(int index=0; index<NUMBER_OF_VOICES; index++){
-        voices[index] = telegraph::initVoice<float, float>(voices[index], sampleRate);
+        voices[index] = telegraph::initVoice<float, float,2>(voices[index], sampleRate);
     }
 }
 
@@ -219,9 +219,9 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     const float SR = this->getSampleRate();
-    const int controlRateDivisor = 32;
-    const float CR = SR/32;
-    
+    constexpr size_t BLOCKSIZE = 64;
+    const float CR = SR/BLOCKSIZE;
+
 
     if(!midiMessages.isEmpty()){
         for (const MidiMessageMetadata it : midiMessages){
@@ -275,34 +275,46 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // interleaved by keeping the same state.
     // double phase_inc = 2*M_PI*440.0/SR;
     
-    for (int sample_index = 0; sample_index < buffer.getNumSamples(); sample_index++)
-    {
-        auto outL = buffer.getWritePointer(0, sample_index);
-        auto outR = buffer.getWritePointer(1, sample_index);
+    updateSynthParams();
 
-
+    for(int block_idx=0; block_idx < buffer.getNumSamples(); block_idx+=BLOCKSIZE){
+        std::array<AudioBlock<float,BLOCKSIZE>,2> block;
+        block[0]*=0;
+        block[1]*=0;
         for(int voiceIndex=0; voiceIndex<NUMBER_OF_VOICES; voiceIndex++){
-    
-        // ..do something to the data...
-        
+
+            voices[voiceIndex] = telegraph::process_control<float, float>(voices[voiceIndex], params, SR, CR);
+
+            // ..do something to the data...
             
+
             //if voice is active
-            if(telegraph::isActive<float, float>(voices[voiceIndex])){
-                voices[voiceIndex] = telegraph::process<float, float, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
-                
-                if(sample_index%controlRateDivisor==0){
-                    updateSynthParams();
-                    voices[voiceIndex] = telegraph::process_control<float, float>(voices[voiceIndex], params, SR, CR);
-                }
-                *outL += voices[voiceIndex].output[0]; 
-                *outR += voices[voiceIndex].output[1]; 
-                
+            if(telegraph::isActive<float, float,2>(voices[voiceIndex])){
+                std::array<AudioBlock<float,BLOCKSIZE>,2> samples;
+                samples[0]*=0;
+                samples[1]*=0;
+                std::tie(voices[voiceIndex],samples) = telegraph::process<float, float, WAVE_TABLE_SIZE, BLOCKSIZE>(voices[voiceIndex], params, SR);
+                block[0] +=samples[0];
+                block[1] +=samples[1];
             }
 
 
         }
-
+        for (int sample_index = block_idx; sample_index < block_idx+BLOCKSIZE; sample_index++)
+        {
+            if(sample_index<buffer.getNumSamples()){
+                auto outL = buffer.getWritePointer(0, sample_index);
+                auto outR = buffer.getWritePointer(1, sample_index);
+                *outL += block[0][sample_index-block_idx]; 
+                *outR += block[1][sample_index-block_idx]; 
+            }
+            
+        }
     }
+    
+
+
+
 
 }
 

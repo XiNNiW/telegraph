@@ -1,44 +1,50 @@
-// #include <gtest/gtest.h>
-// #include "../../src/telegraph-core/voice.h"
-// #include <iostream>
+#include <gtest/gtest.h>
+#include "../../src/telegraph-core/voice.h"
+#include <iostream>
 
 
 
 
-// TEST(DSP_Test, ProcessDoesNotExplode) { 
-//     // params_t {
-//     //     sample_t resonator_q;
-//     //     sample_t resonator_feedback;
-//     //     int amp_attack;
-//     //     int amp_decay;
-//     //     sample_t amp_sustain;
-//     //     int amp_release;
-//     //     int exciter_attack;
-//     //     int exciter_decay;
-//     // };
-//     telegraph::params_t<double> p = telegraph::params_t<double>{
-//         0.9,10.5,44100,44100,1.0,44100,44100
-//     };
-//     telegraph::voice_t<double> v = telegraph::initVoice<double>(telegraph::voice_t<double>(),44100);
-//     v = telegraph::process<double,double>(v,p, 44100);
-//     ASSERT_LT(v.output, 1.1);
-//     ASSERT_GT(v.output, -1.1);
+TEST(DSP_Test, ProcessDoesNotExplode) { 
+    constexpr size_t BLOCKSIZE = 64;
+    constexpr float SR = 48000;
+    constexpr float CR = SR/BLOCKSIZE;
 
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     ASSERT_LT(v.output, 1.1);
-//     ASSERT_GT(v.output, -1.1);
+    telegraph::params_t<float> p;
+    telegraph::voice_t<float,float,2> v = telegraph::initVoice<float,float,2>(telegraph::voice_t<float,float,2>(),SR);
+    std::array<AudioBlock<float,BLOCKSIZE>,2> blocks;
+    v = telegraph::process_control<float, float>(v, p, SR, CR);
+    std::tie(v,blocks) = telegraph::process<float,float,1024,BLOCKSIZE,2>(v,p, SR);
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
 
-//     v = telegraph::noteOn<double>(v,p,60.0,44100.0);
+    v = telegraph::noteOn<float,float,2>(v,p,60.0,SR,CR);
+    v = telegraph::process_control<float, float>(v, p, SR, CR);
 
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     v = telegraph::process<double,double>(v, p, 44100.0);
-//     ASSERT_LT(v.output, 1.1);
-//     ASSERT_GT(v.output, -1.1);
+    std::tie(v,blocks) = telegraph::process<float,float,1024,BLOCKSIZE,2>(v,p, SR);
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
 
-// }
+    v = telegraph::noteOff<float,float,2>(v);
+    v = telegraph::process_control<float, float>(v, p, SR, CR);
+
+    std::tie(v,blocks) = telegraph::process<float,float,1024,BLOCKSIZE,2>(v,p, SR);
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
+
+}
 
 
 // TEST(DSP_Test, DenormalizeParameter) { 
