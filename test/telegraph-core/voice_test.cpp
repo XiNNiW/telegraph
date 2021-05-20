@@ -46,6 +46,67 @@ TEST(DSP_Test, ProcessDoesNotExplode) {
 
 }
 
+TEST(DSP_Test, ProcessDoesNotExplode_polyphonic) { 
+    constexpr size_t VOICES = 16;
+    constexpr size_t MAX_UNISON = 2;
+    constexpr size_t TABLESIZE = 1024;
+    constexpr size_t BLOCKSIZE = 64;
+    constexpr float SR = 48000;
+    constexpr float CR = SR/BLOCKSIZE;
+
+    telegraph::params_t<float> p;
+    std::array<telegraph::voice_t<float,float,MAX_UNISON>,VOICES> voices;
+    for(size_t voice_idx=0;voice_idx<VOICES; voice_idx++){
+        voices[voice_idx] = telegraph::initVoice<float,float,MAX_UNISON>(voices[voice_idx],SR);
+    }
+
+    std::array<AudioBlock<float,BLOCKSIZE>,2> blocks;
+    
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
+
+    
+    voices = telegraph::playNote<float, float, VOICES>(voices, p, 1, 60, 100 ,SR, CR);
+    voices = telegraph::playNote<float, float, VOICES>(voices, p, 1, 64, 100 ,SR, CR);
+    voices = telegraph::playNote<float, float, VOICES>(voices, p, 1, 67, 100 ,SR, CR);
+    
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
+
+    voices = telegraph::releaseNote<float, float, VOICES>(voices, p, 1, 60, 0, SR);
+    voices = telegraph::releaseNote<float, float, VOICES>(voices, p, 1, 64, 0, SR);
+    voices = telegraph::releaseNote<float, float, VOICES>(voices, p, 1, 67, 0, SR);
+
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+    std::tie(voices,blocks) = telegraph::process<float,float,MAX_UNISON,VOICES,TABLESIZE,BLOCKSIZE>(voices ,p, SR);
+
+    for(size_t idx=0; idx<BLOCKSIZE; idx++){
+        ASSERT_LT(blocks[0][idx], 1.1);
+        ASSERT_GT(blocks[0][idx], -1.1);
+        ASSERT_LT(blocks[1][idx], 1.1);
+        ASSERT_GT(blocks[1][idx], -1.1);
+    }
+
+}
+
 
 // TEST(DSP_Test, DenormalizeParameter) { 
 //     double val;

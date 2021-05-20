@@ -14,8 +14,10 @@
 //==============================================================================
 /**
 */
-const int NUMBER_OF_VOICES = 16;
-const int WAVE_TABLE_SIZE = 1024;
+constexpr size_t NUMBER_OF_VOICES = 16;
+constexpr size_t MAX_UNISON = 16;
+constexpr size_t WAVE_TABLE_SIZE = 1024;
+constexpr size_t BLOCKSIZE = 32;
 class TelegraphAudioProcessor  : public juce::AudioProcessor
 {
 public:
@@ -58,14 +60,16 @@ public:
 
 private:
     void updateSynthParams();
-    std::array<telegraph::voice_t<float,float, 2>,NUMBER_OF_VOICES> voices;
+    std::array<telegraph::voice_t<float,float, MAX_UNISON>,NUMBER_OF_VOICES> voices;
     telegraph::params_t<float> params;
     juce::AudioParameterChoice* exciter_pitch;
     juce::AudioParameterChoice* exciter_waveform;
     juce::AudioParameterFloat* exciter_gain;
-
+    juce::AudioParameterFloat* exciter_vibrato_speed;
+    juce::AudioParameterFloat* exciter_vibrato_amount;
     juce::AudioParameterFloat* resonator_q;
     juce::AudioParameterChoice* resonator_pitch;
+    juce::AudioParameterChoice* resonator_type;
     juce::AudioParameterFloat* resonator_chaos_character;
     juce::AudioParameterFloat* resonator_chaos_amount;
     juce::AudioParameterFloat* attack;
@@ -76,6 +80,7 @@ private:
     juce::AudioParameterFloat* lowpass_q;
     juce::AudioParameterFloat* highpass_cutoff;
     juce::AudioParameterFloat* stereo_width;
+    juce::AudioParameterInt* unison;
     juce::AudioParameterFloat* gain;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessor)

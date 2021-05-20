@@ -28,6 +28,16 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     {"-12", "-7", "0", "7", "+12"},
                                                     2  // default index
                                                     ));
+    addParameter (exciter_vibrato_speed = new juce::AudioParameterFloat ("exciter_vib_speed", // parameterID
+                                                    "Exciter Vibrato Speed", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0.5f)); // default value
+    addParameter (exciter_vibrato_amount = new juce::AudioParameterFloat ("exciter_vib_amount", // parameterID
+                                                    "Exciter Vibrato Amount", // parameter name
+                                                    0.0f,   // minimum value
+                                                    1.0f,   // maximum value
+                                                    0)); // default value
     addParameter (exciter_waveform = new juce::AudioParameterChoice ("exciter_waveform", // parameterID
                                                     "Exciter Waveform", // parameter name
                                                     {"SINE", "SAW", "SQUARE"},
@@ -48,6 +58,11 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     0.0f,   // minimum value
                                                     1.0f,   // maximum value
                                                     0.5f)); // default value
+    addParameter (resonator_type = new juce::AudioParameterChoice ("resonator_type", // parameterID
+                                                    "Resonator Chaos Type", // parameter name
+                                                    {"COS", "TANH"},
+                                                    0  // default index
+                                                    )); 
     addParameter (resonator_chaos_character = new juce::AudioParameterFloat ("resonator_chaos_character", // parameterID
                                                     "Resonator Chaos Character", // parameter name
                                                     0.0f,   // minimum value
@@ -92,7 +107,12 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     "Highpass Cutoff", // parameter name
                                                     0.0f,   // minimum value
                                                     1.0f,   // maximum value
-                                                    0.0f)); // default value                                            
+                                                    0.0f)); // default value  
+    addParameter (unison = new juce::AudioParameterInt ("unison_amt", // parameterID
+                                            "Unison", // parameter name
+                                            1,   // minimum value
+                                            16,   // maximum value
+                                            1)); // default value                                                                                          
     addParameter (stereo_width = new juce::AudioParameterFloat ("stereo_width", // parameterID
                                                 "Stereo Width", // parameter name
                                                 0.0f,   // minimum value
@@ -177,7 +197,7 @@ void TelegraphAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     for(int index=0; index<NUMBER_OF_VOICES; index++){
-        voices[index] = telegraph::initVoice<float, float,2>(voices[index], sampleRate);
+        voices[index] = telegraph::initVoice<float, float,16>(voices[index], sampleRate);
     }
 }
 
@@ -219,7 +239,6 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
     const float SR = this->getSampleRate();
-    constexpr size_t BLOCKSIZE = 64;
     const float CR = SR/BLOCKSIZE;
 
 
@@ -273,34 +292,14 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     // the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
-    // double phase_inc = 2*M_PI*440.0/SR;
     
     updateSynthParams();
 
-    for(int block_idx=0; block_idx < buffer.getNumSamples(); block_idx+=BLOCKSIZE){
+    for(size_t block_idx=0; block_idx < buffer.getNumSamples(); block_idx+=BLOCKSIZE){
         std::array<AudioBlock<float,BLOCKSIZE>,2> block;
-        block[0]*=0;
-        block[1]*=0;
-        for(int voiceIndex=0; voiceIndex<NUMBER_OF_VOICES; voiceIndex++){
-
-            voices[voiceIndex] = telegraph::process_control<float, float>(voices[voiceIndex], params, SR, CR);
-
-            // ..do something to the data...
-            
-
-            //if voice is active
-            if(telegraph::isActive<float, float,2>(voices[voiceIndex])){
-                std::array<AudioBlock<float,BLOCKSIZE>,2> samples;
-                samples[0]*=0;
-                samples[1]*=0;
-                std::tie(voices[voiceIndex],samples) = telegraph::process<float, float, WAVE_TABLE_SIZE, BLOCKSIZE>(voices[voiceIndex], params, SR);
-                block[0] +=samples[0];
-                block[1] +=samples[1];
-            }
-
-
-        }
-        for (int sample_index = block_idx; sample_index < block_idx+BLOCKSIZE; sample_index++)
+        std::tie(voices,block) = process<float,float,MAX_UNISON,NUMBER_OF_VOICES,WAVE_TABLE_SIZE,BLOCKSIZE>(voices,params,SR);
+        
+        for (size_t sample_index = block_idx; sample_index < block_idx+BLOCKSIZE; sample_index++)
         {
             if(sample_index<buffer.getNumSamples()){
                 auto outL = buffer.getWritePointer(0, sample_index);
@@ -311,10 +310,6 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             
         }
     }
-    
-
-
-
 
 }
 
@@ -323,11 +318,15 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.exciter_ratio = telegraph::scale_parameter_from_set<int, float>(exciter_pitch->getIndex(),{0.5, 2.0/3.0, 1, 3.0/2.0, 2});
     params.wave_mode = telegraph::scale_parameter_from_set<int, telegraph::Wave>(exciter_waveform->getIndex(), {telegraph::Wave::SINE,telegraph::Wave::SAW,telegraph::Wave::SQUARE});
     params.resonator_q = telegraph::scale_parameter<float>(telegraph::scale_parameter_as_db<float>(resonator_q->get()),1.0, 100.0);
+    params.vibrato_speed = telegraph::scale_parameter<float>(exciter_vibrato_speed->get(),0,8);
+    params.vibrato_depth = telegraph::scale_parameter<float>(exciter_vibrato_amount->get(),0,2);
+    params.feedback_mode = telegraph::scale_parameter_from_set<int, telegraph::FeedbackMode>(resonator_type->getIndex(), {telegraph::FeedbackMode::COS,telegraph::FeedbackMode::TANH});
+    
     params.resonator_chaos_character = resonator_chaos_character->get();
     auto character = params.resonator_chaos_character;
     params.resonator_feedback = telegraph::scale_parameter_exp<float>(character,0.01,100);
     params.resonater_ratio = telegraph::scale_parameter_from_set<int, float>(resonator_pitch->getIndex(),{0.5, 2.0/3.0, 1, 3.0/2.0, 2});
-   
+
     params.resonator_chaos_character = telegraph::scale_parameter_exp<float>(resonator_chaos_character->get(),0,100);
     params.resonator_chaos_amount = telegraph::scale_parameter_as_db<float>(resonator_chaos_amount->get());
     params.amp_attack = telegraph::scale_parameter_exp<float>(attack->get(), 4.0, 4800.0);
@@ -338,7 +337,8 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.lowpass_filter_q = lowpass_q->get();
     params.highpass_filter_cutoff = telegraph::scale_parameter<float>(highpass_cutoff->get(),30.0,1000.0);
     params.stereo_width = stereo_width->get();
-    params.gain = telegraph::scale_parameter_as_db<float>(gain->get());
+    params.unison = unison->get();
+    params.gain = telegraph::scale_parameter_as_db<float>(gain->get())/float(params.unison);
 }
 
 //==============================================================================
