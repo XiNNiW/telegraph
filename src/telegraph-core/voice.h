@@ -3,6 +3,7 @@ using algae::dsp::shell::dsp_node;
 using algae::dsp::core::AudioBlock;
 using algae::dsp::core::StereoBlock;
 using algae::dsp::core::filter::process;
+using algae::dsp::core::filter::process_tanh;
 using algae::dsp::core::filter::chaotic_resonator_t;
 using algae::dsp::core::filter::onepole_hip_t;
 using algae::dsp::core::filter::hip;
@@ -66,9 +67,15 @@ namespace telegraph{
 
     template<typename input_t, typename output_t, int TABLE_SIZE>
     output_t scale_parameter_from_set(input_t val,  const output_t (&options) [TABLE_SIZE]){
-        val = val>=0 && val<=1 ? val : 0;
-        return options[size_t(floor(val*(TABLE_SIZE-1)))];
+        val = (val>=0) && (val<=1) ? val : 0;
+        return options[size_t(ceil(val*(TABLE_SIZE-1)))];
     }
+    template<typename output_t, int TABLE_SIZE>
+    output_t lookup_safe(size_t val,  const output_t (&options) [TABLE_SIZE]){
+        val = (val>=0) && (val<=(TABLE_SIZE-1)) ? val : 0;
+        return options[val];
+    }
+
     enum Wave {
         SINE,
         SAW,
@@ -91,7 +98,7 @@ namespace telegraph{
         //};
         std::array<sample_t,MAX_UNISON> phi alignas(16);
         onepole_hip_t<sample_t> highpass alignas(16);
-        biquad_t<sample_t> filter alignas(16);
+        biquad_t<sample_t> lowpass alignas(16);
 
         ramp_t<sample_t> exciter_envelope alignas(16);
         adsr_t<sample_t> amp_envelope alignas(16);
@@ -191,7 +198,7 @@ namespace telegraph{
             v.resonator[unison_idx].feedback_amt = p.resonator_chaos_character; 
             v.resonator[unison_idx].chaos_gain = p.resonator_chaos_amount; 
         }
-        v.filter = lowpass<sample_t,frequency_t>(v.filter,p.lowpass_filter_cutoff,p.lowpass_filter_q,sampleRate);
+        v.lowpass = lowpass<sample_t,frequency_t>(v.lowpass, p.lowpass_filter_cutoff, p.lowpass_filter_q, sampleRate);
         v.highpass = hip(v.highpass, p.highpass_filter_cutoff, sampleRate);
         
 
@@ -242,8 +249,9 @@ namespace telegraph{
                 default: std::tie(v.phase[unison_idx], exciter) = sineOsc<sample_t, TABLE_SIZE, BLOCK_SIZE>::process(v.phase[unison_idx], v.phi[unison_idx]); break;
             }
 
-            block = exciter*p.exciter_gain;
-            block *= v.amp_envelope.env.value;
+            exciter *= p.exciter_gain;
+            exciter = exciter*v.amp_envelope.env.value;
+            block = exciter;
             // sample_t fb1 = p.resonator_feedback;
 
             // for(size_t idx=0;idx<BLOCK_SIZE;idx++){
@@ -257,22 +265,27 @@ namespace telegraph{
             //     v.resonator[unison_idx].resonator = process<sample_t>(v.resonator[unison_idx].resonator, input);
             //     block[idx] = v.resonator[unison_idx].resonator.y1;
             // }
+
+
             switch(p.feedback_mode){
-                case TANH: std::tie(v.resonator[unison_idx],block) = process<sample_t, tanh_approx_pade<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);;
-                default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);;
+                case TANH: std::tie(v.resonator[unison_idx],block) = process_tanh<sample_t, BLOCK_SIZE>(v.resonator[unison_idx],exciter);
+                default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);
             }
-            // std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],block);
-            output = pan_unison_block<sample_t, TABLE_SIZE, BLOCK_SIZE, MAX_UNISON>(block,p,unison_idx);
+
+            block *= exciter*-1 + 1;
+            StereoBlock<sample_t,BLOCK_SIZE> panned_block=pan_unison_block<sample_t, TABLE_SIZE, BLOCK_SIZE, MAX_UNISON>(block,p,unison_idx);
+            output[0] += panned_block[0];
+            output[1] += panned_block[1];
         } 
 
         for(size_t stereo_idx=0; stereo_idx<2; stereo_idx++){
             output[stereo_idx] = tanh_approx_pade<sample_t>(output[stereo_idx]);
-            // block *= exciter*-1 + 1;
+            
             output[stereo_idx] *= 0.25*p.gain;
 
-            std::tie(v.highpass, output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass, output[stereo_idx]);
-            
-            std::tie(v.filter, output[stereo_idx]) = process<sample_t>(v.filter, output[stereo_idx]);
+            // std::tie(v.highpass, output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass, output[stereo_idx]);
+
+            // std::tie(v.lowpass, output[stereo_idx]) = process<sample_t>(v.lowpass, output[stereo_idx]);
 
             output[stereo_idx] *= v.amp_envelope.env.value*v.amp_envelope.env.value;
         }

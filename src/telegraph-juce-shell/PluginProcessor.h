@@ -9,7 +9,10 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <juce_dsp/juce_dsp.h>
 #include <telegraph_core.h>
+typedef float SAMPLE;
+// typedef juce::dsp::SIMDRegister<float> SAMPLE;
 
 //==============================================================================
 /**
@@ -60,8 +63,8 @@ public:
 
 private:
     void updateSynthParams();
-    std::array<telegraph::voice_t<float,float, MAX_UNISON>,NUMBER_OF_VOICES> voices;
-    telegraph::params_t<float> params;
+    std::array<telegraph::voice_t<SAMPLE,SAMPLE, MAX_UNISON>,NUMBER_OF_VOICES> voices;
+    telegraph::params_t<SAMPLE> params;
     juce::AudioParameterChoice* exciter_pitch;
     juce::AudioParameterChoice* exciter_waveform;
     juce::AudioParameterFloat* exciter_gain;

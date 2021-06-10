@@ -117,6 +117,7 @@ target_link_libraries(telegraph PUBLIC
         juce::juce_audio_utils
         juce::juce_audio_processors
         juce::juce_audio_plugin_client
+        juce::juce_dsp
 )
 target_include_directories(telegraph PUBLIC
         src/telegraph-juce-shell
