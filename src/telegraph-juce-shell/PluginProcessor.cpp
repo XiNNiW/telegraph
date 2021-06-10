@@ -295,20 +295,30 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     
     updateSynthParams();
 
-    for(size_t block_idx=0; block_idx < buffer.getNumSamples(); block_idx+=BLOCKSIZE){
-        std::array<AudioBlock<SAMPLE,BLOCKSIZE>,2> block;
-        std::tie(voices,block) = process<SAMPLE,SAMPLE,MAX_UNISON,NUMBER_OF_VOICES,WAVE_TABLE_SIZE,BLOCKSIZE>(voices,params,SR);
+    // for(size_t block_idx=0; block_idx < buffer.getNumSamples(); block_idx+=BLOCKSIZE){
+    //     std::array<AudioBlock<SAMPLE,BLOCKSIZE>,2> block;
+    //     std::tie(voices,block) = process<SAMPLE,SAMPLE,MAX_UNISON,NUMBER_OF_VOICES,WAVE_TABLE_SIZE,BLOCKSIZE>(voices,params,SR);
         
-        for (size_t sample_index = block_idx; sample_index < block_idx+BLOCKSIZE; sample_index++)
-        {
-            if(sample_index<buffer.getNumSamples()){
-                auto outL = buffer.getWritePointer(0, sample_index);
-                auto outR = buffer.getWritePointer(1, sample_index);
-                *outL += block[0][sample_index-block_idx]; 
-                *outR += block[1][sample_index-block_idx]; 
-            }
+    //     for (size_t sample_index = block_idx; sample_index < block_idx+BLOCKSIZE; sample_index++)
+    //     {
+    //         if(sample_index<buffer.getNumSamples()){
+    //             auto outL = buffer.getWritePointer(0, sample_index);
+    //             auto outR = buffer.getWritePointer(1, sample_index);
+    //             *outL += block[0][sample_index-block_idx]; 
+    //             *outR += block[1][sample_index-block_idx]; 
+    //         }
             
-        }
+    //     }
+    // }
+
+    for(size_t samp_idx=0; samp_idx < buffer.getNumSamples(); samp_idx++){
+        bool shouldUpdateControl = (samp_idx%BLOCKSIZE)==0;
+        std::array<SAMPLE,2> block;
+        std::tie(voices,block) = process<SAMPLE,SAMPLE,MAX_UNISON,NUMBER_OF_VOICES,WAVE_TABLE_SIZE,BLOCKSIZE>(voices,params,SR,shouldUpdateControl);
+        auto outL = buffer.getWritePointer(0, samp_idx);
+        auto outR = buffer.getWritePointer(1, samp_idx);
+        *outL += block[0]; 
+        *outR += block[1]; 
     }
 
 }
@@ -320,6 +330,7 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.resonator_q = telegraph::scale_parameter<SAMPLE>(telegraph::scale_parameter_as_db<SAMPLE>(resonator_q->get()),1.0, 100.0);
     params.vibrato_speed = telegraph::scale_parameter<SAMPLE>(exciter_vibrato_speed->get(),0,8);
     params.vibrato_depth = telegraph::scale_parameter<SAMPLE>(exciter_vibrato_amount->get(),0,2);
+    // params.feedback_mode = telegraph::FeedbackMode::TANH;
     params.feedback_mode = telegraph::lookup_safe<telegraph::FeedbackMode>(resonator_type->getIndex(), {telegraph::FeedbackMode::COS,telegraph::FeedbackMode::TANH});
     
     params.resonator_chaos_character = resonator_chaos_character->get();

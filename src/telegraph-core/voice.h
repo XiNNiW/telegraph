@@ -116,7 +116,7 @@ namespace telegraph{
         size_t unison = 2;
         sample_t exciter_gain=1.0;
         Wave wave_mode=SINE;
-        FeedbackMode feedback_mode=COS;
+        FeedbackMode feedback_mode=TANH;
         sample_t resonator_q=1.0;
         sample_t resonator_feedback=0.01;
         sample_t resonator_cross_feedback=0.01;
@@ -207,12 +207,9 @@ namespace telegraph{
         return v;
     }
 
-    template<typename sample_t, size_t TABLE_SIZE, size_t BLOCK_SIZE, size_t MAX_UNISON>
-    const inline std::array<AudioBlock<sample_t, BLOCK_SIZE>,2> pan_unison_block(const AudioBlock<sample_t, BLOCK_SIZE>& block, const params_t<sample_t>& p, const size_t& unison_index){
-        StereoBlock<sample_t,BLOCK_SIZE> output = {
-            AudioBlock<sample_t, BLOCK_SIZE>::empty(),
-            AudioBlock<sample_t, BLOCK_SIZE>::empty()
-        };
+    template<typename sample_t, size_t TABLE_SIZE,  size_t MAX_UNISON>
+    const inline std::array<sample_t,2> pan_unison(const sample_t& block, const params_t<sample_t>& p, const size_t& unison_index){
+        std::array<sample_t,2> output;
 
         const sample_t one_minus_width = (1-p.stereo_width);
         const sample_t center = 0.125;
@@ -227,26 +224,25 @@ namespace telegraph{
     }
 
 
-    template<typename sample_t, typename frequency_t, size_t TABLE_SIZE, size_t BLOCK_SIZE, size_t MAX_UNISON>
-    const inline std::pair<voice_t<sample_t,frequency_t, MAX_UNISON>,std::array<AudioBlock<sample_t, BLOCK_SIZE>, 2>> process(
+    template<typename sample_t, typename frequency_t, size_t TABLE_SIZE, size_t MAX_UNISON>
+    const inline std::pair<voice_t<sample_t,frequency_t, MAX_UNISON>,std::array<sample_t,2>> process(
         voice_t<sample_t,frequency_t, MAX_UNISON> v, 
         const params_t<sample_t>& p, 
         const frequency_t& sampleRate
     ){
        
-        StereoBlock<sample_t,BLOCK_SIZE> output = {
-            AudioBlock<sample_t, BLOCK_SIZE>::empty(),
-            AudioBlock<sample_t, BLOCK_SIZE>::empty()
-        };
+        std::array<sample_t,2> output = {0,0};
+
+
 
         for(size_t unison_idx=0; unison_idx<p.unison; unison_idx++){
-            AudioBlock<sample_t, BLOCK_SIZE> exciter;
-            AudioBlock<sample_t, BLOCK_SIZE> block;
+            sample_t exciter;
+            sample_t block;
 
             switch(p.wave_mode){
-                case SAW:  std::tie(v.sawtooth[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.sawtooth[unison_idx]); break;
-                case SQUARE: std::tie(v.square[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.square[unison_idx]); break;
-                default: std::tie(v.phase[unison_idx], exciter) = sineOsc<sample_t, TABLE_SIZE, BLOCK_SIZE>::process(v.phase[unison_idx], v.phi[unison_idx]); break;
+                case SAW:  std::tie(v.sawtooth[unison_idx], exciter) = process<sample_t>(v.sawtooth[unison_idx]); break;
+                case SQUARE: std::tie(v.square[unison_idx], exciter) = process<sample_t>(v.square[unison_idx]); break;
+                default: std::tie(v.phase[unison_idx], exciter) = sineOsc<sample_t, TABLE_SIZE>::process(v.phase[unison_idx], v.phi[unison_idx]); break;
             }
 
             exciter *= p.exciter_gain;
@@ -266,14 +262,14 @@ namespace telegraph{
             //     block[idx] = v.resonator[unison_idx].resonator.y1;
             // }
 
-
+            // std::tie(v.resonator[unison_idx],block) = process_resonator(v.resonator[unison_idx],exciter);
             switch(p.feedback_mode){
-                case TANH: std::tie(v.resonator[unison_idx],block) = process_tanh<sample_t, BLOCK_SIZE>(v.resonator[unison_idx],exciter);
-                default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);
+                case TANH: std::tie(v.resonator[unison_idx],block) = process_tanh<sample_t>(v.resonator[unison_idx],exciter);
+                default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup>(v.resonator[unison_idx],exciter);
             }
 
             block *= exciter*-1 + 1;
-            StereoBlock<sample_t,BLOCK_SIZE> panned_block=pan_unison_block<sample_t, TABLE_SIZE, BLOCK_SIZE, MAX_UNISON>(block,p,unison_idx);
+            std::array<sample_t,2> panned_block=pan_unison<sample_t, TABLE_SIZE, MAX_UNISON>(block,p,unison_idx);
             output[0] += panned_block[0];
             output[1] += panned_block[1];
         } 
@@ -283,9 +279,9 @@ namespace telegraph{
             
             output[stereo_idx] *= 0.25*p.gain;
 
-            // std::tie(v.highpass, output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass, output[stereo_idx]);
+            std::tie(v.highpass, output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass, output[stereo_idx]);
 
-            // std::tie(v.lowpass, output[stereo_idx]) = process<sample_t>(v.lowpass, output[stereo_idx]);
+            std::tie(v.lowpass, output[stereo_idx]) = process<sample_t>(v.lowpass, output[stereo_idx]);
 
             output[stereo_idx] *= v.amp_envelope.env.value*v.amp_envelope.env.value;
         }
@@ -307,25 +303,28 @@ namespace telegraph{
     }
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON, size_t VOICES, size_t WAVE_TABLE_SIZE, size_t BLOCK_SIZE>
-    const inline std::pair<std::array<voice_t<sample_t,frequency_t,MAX_UNISON>, VOICES>, StereoBlock<sample_t,BLOCK_SIZE>> process(
+    const inline std::pair<std::array<voice_t<sample_t,frequency_t,MAX_UNISON>, VOICES>, std::array<sample_t,2>> process(
         std::array<voice_t<sample_t,frequency_t,MAX_UNISON>,VOICES> voices, 
         const params_t<sample_t>& params, 
-        const frequency_t& sampleRate){
+        const frequency_t& sampleRate,
+        const bool shouldUpdateControl
+        ){
 
         const frequency_t SR = sampleRate;
         const frequency_t CR = SR/BLOCK_SIZE;
         
-        StereoBlock<sample_t,BLOCK_SIZE> block = {
-            AudioBlock<sample_t,BLOCK_SIZE>::empty(),
-            AudioBlock<sample_t,BLOCK_SIZE>::empty()
-        };
+        std::array<sample_t,2> block = {0,0};
 
         for(size_t voiceIndex=0; voiceIndex<VOICES; voiceIndex++){
 
             if(telegraph::isActive<sample_t, frequency_t,MAX_UNISON>(voices[voiceIndex])){
-                voices[voiceIndex] = process_control<sample_t, frequency_t>(voices[voiceIndex], params, SR, CR);
-                StereoBlock<sample_t,BLOCK_SIZE> samples;
-                std::tie(voices[voiceIndex],samples) = process<sample_t, frequency_t, WAVE_TABLE_SIZE, BLOCK_SIZE>(voices[voiceIndex], params, SR);
+                if(shouldUpdateControl){
+                    voices[voiceIndex] = process_control<sample_t, frequency_t>(voices[voiceIndex], params, SR, CR);
+
+                }
+
+                std::array<sample_t,2> samples;
+                std::tie(voices[voiceIndex],samples) = process<sample_t, frequency_t, WAVE_TABLE_SIZE>(voices[voiceIndex], params, SR);
                 block[0] +=samples[0];
                 block[1] +=samples[1];
             }
