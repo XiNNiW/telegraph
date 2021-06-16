@@ -82,6 +82,8 @@ private:
     juce::AudioParameterFloat* stereo_width;
     juce::AudioParameterInt* unison;
     juce::AudioParameterFloat* gain;
+    
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessor)
 };
