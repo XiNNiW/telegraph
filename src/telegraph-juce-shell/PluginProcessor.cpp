@@ -63,7 +63,7 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                                     0.5f)); // default value
     addParameter (resonator_type = new juce::AudioParameterChoice ("resonator_type", // parameterID
                                                     "Resonator Chaos Type", // parameter name
-                                                    {"COS", "TANH", "SIGMOID"},
+                                                    {"COS", "WRAP", "TANH", "CLIP", "LOWERED_BELL"},
                                                     0  // default index
                                                     )); 
     addParameter (resonator_chaos_character = new juce::AudioParameterFloat ("resonator_chaos_character", // parameterID
@@ -115,7 +115,12 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
                                             "Unison", // parameter name
                                             1,   // minimum value
                                             16,   // maximum value
-                                            1)); // default value                                                                                          
+                                            1)); // default value      
+    addParameter (unison_detune = new juce::AudioParameterFloat ("unison_detune", // parameterID
+                                            "Unison Detune", // parameter name
+                                            0,   // minimum value
+                                            1,   // maximum value
+                                            0.01)); // default value                                                                                       
     addParameter (stereo_width = new juce::AudioParameterFloat ("stereo_width", // parameterID
                                                 "Stereo Width", // parameter name
                                                 0.0f,   // minimum value
@@ -203,14 +208,6 @@ void TelegraphAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
         voices[index] = telegraph::initVoice<float, float,MAX_UNISON>(voices[index], sampleRate);
     }
 
-    // resonator.feedback_amt = 1.1; 
-    // resonator.chaos_gain = 1.1; 
-    // resonator.resonator = update_coefficients<float,float>(resonator.resonator, 440.0, 1, 0.5, sampleRate);
-
-    // sawtooth = setFrequency<float,float>(sawtooth, 440.0, sampleRate);
-
-    // lop = lowpass<float,float>(lop,880,0.7,sampleRate);
-    // highpass = hip(highpass, 30.0, sampleRate);
 }
 
 void TelegraphAudioProcessor::releaseResources()
@@ -310,20 +307,7 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
 
     for(size_t block_idx=0; block_idx < num_blocks; block_idx++) {
         std::array<AudioBlock<float,BLOCKSIZE>,2> block;
-        // // std::tie(test_phase_l, block[0]) = sineOsc<float, 0, BLOCKSIZE>::process(test_phase_l, 440.0/SR);
-        // std::tie(sawtooth, block[0]) = process<float, BLOCKSIZE>(sawtooth);
-        // block[0]*=0.125;
-        // // std::tie(resonator,block[0]) = process<float, cos_t<float,WAVE_TABLE_SIZE>::lookup, BLOCKSIZE>(resonator, block[0]);
-        // std::tie(resonator,block[0]) = process<float, tanh_approx_pade<float>, BLOCKSIZE>(resonator, block[0]);
-        // block[0] = tanh_approx_pade<float>(block[0]);
 
-        // std::tie(highpass, block[0]) = process<float, float>(highpass, block[0]);
-            
-        // std::tie(lop, block[0]) = process<float>(lop, block[0]);        
-        
-        // block[0]*=0.5;
-
-        // block[1]=block[0];
         std::tie(voices, block) = process<float, float, MAX_UNISON, NUMBER_OF_VOICES, WAVE_TABLE_SIZE, BLOCKSIZE>(voices,params,SR);
         size_t num_processed = block_idx*BLOCKSIZE;
         for (size_t sample_index = num_processed; sample_index < num_processed+BLOCKSIZE; sample_index++)
@@ -339,7 +323,7 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
     }
 
     size_t rem_samples = num_samples_in_buffer % BLOCKSIZE; 
-    assert(rem_samples == 0);
+    // assert(rem_samples == 0);
 
     if(rem_samples > 0) {
         size_t num_processed = num_blocks*BLOCKSIZE;
@@ -366,7 +350,7 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.resonator_q = telegraph::scale_parameter<float>(telegraph::scale_parameter_as_db<float>(resonator_q->get()),1.0, 100.0);
     params.vibrato_speed = telegraph::scale_parameter<float>(exciter_vibrato_speed->get(),0,8);
     params.vibrato_depth = telegraph::scale_parameter<float>(exciter_vibrato_amount->get(),0,2);
-    params.feedback_mode = telegraph::lookup_safe<telegraph::FeedbackMode>(resonator_type->getIndex(), {telegraph::FeedbackMode::COS, telegraph::FeedbackMode::TANH, telegraph::FeedbackMode::SIGMOID});
+    params.feedback_mode = telegraph::lookup_safe<telegraph::FeedbackMode>(resonator_type->getIndex(), {telegraph::FeedbackMode::COS, telegraph::FeedbackMode::WRAP, telegraph::FeedbackMode::TANH, telegraph::FeedbackMode::CLIP, telegraph::FeedbackMode::LOWERED_BELL});
 
     params.resonator_feedback = telegraph::scale_parameter_exp<float>(resonator_chaos_character->get(),0.01,100);
     params.resonater_ratio = telegraph::lookup_safe<float>(resonator_pitch->getIndex(), {0.5, 2.0/3.0, 1, 3.0/2.0, 2});
@@ -382,6 +366,7 @@ void TelegraphAudioProcessor::updateSynthParams(){
     params.highpass_filter_cutoff = telegraph::scale_parameter<float>(highpass_cutoff->get(),30.0,1000.0);
     params.stereo_width = stereo_width->get();
     params.unison = unison->get();
+    params.unison_detune = unison_detune->get();
     params.gain = telegraph::scale_parameter_as_db<float>(gain->get());
 }
 

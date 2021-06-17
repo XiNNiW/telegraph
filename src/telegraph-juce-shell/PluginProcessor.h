@@ -81,6 +81,7 @@ private:
     juce::AudioParameterFloat* highpass_cutoff;
     juce::AudioParameterFloat* stereo_width;
     juce::AudioParameterInt* unison;
+    juce::AudioParameterFloat* unison_detune;
     juce::AudioParameterFloat* gain;
     
 
