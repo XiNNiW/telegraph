@@ -45,7 +45,51 @@ namespace telegraph {
         return static_cast<size_t>(T::_length_);
     }
 
-        
+    template<typename T>
+    inline const std::string DisplayName(const T& value);
+
+    template<>
+    inline const std::string DisplayName<ModSource>(const ModSource& value){
+        const std::array<std::string,Size<ModSource>()> names = {
+            "AMP_ENV",
+            "ENV_ONE",
+            "ENV_TWO",
+            "VIB_LFO",
+            "LFO_ONE",
+            "LFO_TWO",
+            "VELOCITY",
+            "PITCH_BEND",
+            "MOD_WHEEL",
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+    template<>
+    inline const std::string DisplayName<ModDestination>(const ModDestination& value){
+        const std::array<std::string, Size<ModDestination>()> names = {
+            "VIB_AMOUNT",
+            "VIB_SPEED",
+            "LFO_ONE_SPEED",
+            "LFO_TWO_SPEED",
+            "EXCITER_FREQ",
+            "EXCITER_GAIN",
+            "RESONATOR_FREQ",
+            "RESONATOR_Q",
+            "CHAOS_AMOUNT",
+            "CHAOS_CHARACTER",
+            "DETUNE",
+            "LOWPASS_CUTOFF",
+            "LOWPASS_Q",
+            "HIGHPASS_CUTOFF",
+            "STEREO_WIDTH",
+            "GAIN",
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+
+
+
 
     template<typename sample_t>
     struct lfo_t{

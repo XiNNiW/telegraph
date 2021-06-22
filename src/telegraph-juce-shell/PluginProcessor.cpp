@@ -219,9 +219,9 @@ TelegraphAudioProcessor::TelegraphAudioProcessor()
     ); // default value
     for(size_t mod_source_idx=0; mod_source_idx<telegraph::Size<telegraph::ModSource>(); mod_source_idx++){
         for(size_t mod_dest_idx=0; mod_dest_idx<telegraph::Size<telegraph::ModDestination>(); mod_dest_idx++){
-            std::string parameter_name = std::to_string(mod_source_idx);
+            std::string parameter_name = telegraph::DisplayName<telegraph::ModSource>(telegraph::ModSource(mod_source_idx));
             parameter_name += "to";
-            parameter_name += std::to_string(mod_dest_idx);
+            parameter_name += telegraph::DisplayName<telegraph::ModDestination>(telegraph::ModDestination(mod_dest_idx));
             addParameter (mod_matrix[mod_source_idx][mod_dest_idx] = new juce::AudioParameterFloat (parameter_name, // parameterID
                                                     parameter_name, // parameter name
                                                     0.0f,   // minimum value
