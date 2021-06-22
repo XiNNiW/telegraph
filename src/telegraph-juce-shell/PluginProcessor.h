@@ -65,7 +65,6 @@ private:
     juce::AudioParameterChoice* exciter_pitch;
     juce::AudioParameterChoice* exciter_waveform;
     juce::AudioParameterFloat* exciter_gain;
-    juce::AudioParameterFloat* exciter_vibrato_speed;
     juce::AudioParameterFloat* exciter_vibrato_amount;
     juce::AudioParameterFloat* resonator_q;
     juce::AudioParameterChoice* resonator_pitch;
@@ -84,6 +83,21 @@ private:
     juce::AudioParameterFloat* unison_detune;
     juce::AudioParameterFloat* gain;
     
+    juce::AudioParameterFloat* env_one_attack;
+    juce::AudioParameterFloat* env_one_decay;
+    juce::AudioParameterFloat* env_one_sustain;
+    juce::AudioParameterFloat* env_one_release;
+    
+    juce::AudioParameterFloat* env_two_attack;
+    juce::AudioParameterFloat* env_two_decay;
+    juce::AudioParameterFloat* env_two_sustain;
+    juce::AudioParameterFloat* env_two_release;
+   
+    juce::AudioParameterFloat* exciter_vibrato_speed;
+    juce::AudioParameterFloat* lfo_one_speed;
+    juce::AudioParameterFloat* lfo_two_speed;
+
+    juce::AudioParameterFloat* mod_matrix[telegraph::Size<telegraph::ModSource>()][telegraph::Size<telegraph::ModDestination>()];
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessor)
