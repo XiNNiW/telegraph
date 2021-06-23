@@ -40,20 +40,7 @@ using algae::dsp::core::units::mtof;
 
 namespace telegraph{
 
-    enum Wave {
-        SINE,
-        SAW,
-        SQUARE,
-        TRI
-    };
 
-    enum FeedbackMode {
-        COS,
-        TANH,
-        LOWERED_BELL,
-        CLIP,
-        WRAP
-    };
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON>
     struct alignas(16) voice_t {
@@ -79,21 +66,6 @@ namespace telegraph{
         bool amp_gate alignas(16)=false;
     };
 
-    template<typename sample_t>
-    struct params_t {
-        ModulationMatrix<sample_t> mod_matrix;
-        std::array<sample_t, Size<ModDestination>()> modulatable_params;
-        size_t unison = 2;
-
-        Wave wave_mode=SINE;
-        FeedbackMode feedback_mode=COS;
-
-        adsr_params_t<sample_t> amp_env_params;
-        adsr_params_t<sample_t> mod_env_one_params;
-        adsr_params_t<sample_t> mod_env_two_params;
-
-    };
-
     template<typename sample_t, typename frequency_t, int MAX_UNISON>
     const inline voice_t<sample_t, frequency_t, MAX_UNISON> initVoice(voice_t<sample_t, frequency_t, MAX_UNISON> v, sample_t sampleRate){
         for(size_t unison_idx=0; unison_idx<MAX_UNISON; unison_idx++){
@@ -115,8 +87,6 @@ namespace telegraph{
 
         return isActive;
     }
-
-
 
     template<typename sample_t, typename frequency_t> 
     const inline chaotic_resonator_t<sample_t> update_resonator(
@@ -140,14 +110,12 @@ namespace telegraph{
         v.modulators.amp_envelope = adsr_t<sample_t>::process(v.modulators.amp_envelope, v.amp_gate, p.amp_env_params);
         v.modulators.mod_envelope_1 = adsr_t<sample_t>::process(v.modulators.mod_envelope_1, v.amp_gate, p.mod_env_one_params);
         v.modulators.mod_envelope_2 = adsr_t<sample_t>::process(v.modulators.mod_envelope_2, v.amp_gate, p.mod_env_two_params);
-        v.modulators.vib_lfo = update_lfo(v.modulators.vib_lfo, v.parameter_values[static_cast<size_t>(ModDestination::VIB_SPEED)]);
-        v.modulators.mod_lfo_1 = update_lfo(v.modulators.mod_lfo_1, v.parameter_values[static_cast<size_t>(ModDestination::LFO_ONE_SPEED)]);
-        v.modulators.mod_lfo_2 = update_lfo(v.modulators.mod_lfo_2, v.parameter_values[static_cast<size_t>(ModDestination::LFO_TWO_SPEED)]);
+        v.modulators.vib_lfo = lfo_t<sample_t>::process(v.modulators.vib_lfo, v.parameter_values[static_cast<size_t>(ModDestination::VIB_SPEED)]);
+        v.modulators.mod_lfo_1 = lfo_t<sample_t>::process(v.modulators.mod_lfo_1, v.parameter_values[static_cast<size_t>(ModDestination::LFO_ONE_SPEED)]);
+        v.modulators.mod_lfo_2 = lfo_t<sample_t>::process(v.modulators.mod_lfo_2, v.parameter_values[static_cast<size_t>(ModDestination::LFO_TWO_SPEED)]);
         
         return v.modulators;
     }
-
-
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON>
     std::array<sample_t, Size<ModDestination>()> modulate_params(const voice_t<sample_t, frequency_t, MAX_UNISON>& v, const params_t<sample_t>& p){

@@ -87,21 +87,15 @@ namespace telegraph {
         return names[static_cast<size_t>(value)];
     }
 
-
-
-
-
     template<typename sample_t>
     struct lfo_t{
         sample_t phase alignas(16);
         sample_t value alignas(16);
+        static const inline lfo_t<sample_t> process(lfo_t<sample_t> lfo, const sample_t& freq){
+            lfo.phase = update_phase<sample_t,sample_t>(lfo.phase, freq);
+            return lfo;
+        }
     };
-
-    template<typename sample_t, typename frequency_t>
-    const inline lfo_t<sample_t> update_lfo(lfo_t<sample_t> lfo, const frequency_t& freq){
-        lfo.phase = update_phase(lfo.phase, freq);
-        return lfo;
-    }
 
     template<typename sample_t>
     struct alignas(16) modulators_t{
@@ -115,6 +109,36 @@ namespace telegraph {
 
     template<typename sample_t>
     using ModulationMatrix = std::array<std::array<sample_t,Size<ModDestination>()>,Size<ModSource>()>;
+
+    enum Wave {
+        SINE,
+        SAW,
+        SQUARE,
+        TRI
+    };
+
+    enum FeedbackMode {
+        COS,
+        TANH,
+        LOWERED_BELL,
+        CLIP,
+        WRAP
+    };
+
+    template<typename sample_t>
+    struct params_t {
+        ModulationMatrix<sample_t> mod_matrix;
+        std::array<sample_t, Size<ModDestination>()> modulatable_params;
+        size_t unison = 2;
+
+        Wave wave_mode=SINE;
+        FeedbackMode feedback_mode=COS;
+
+        adsr_params_t<sample_t> amp_env_params;
+        adsr_params_t<sample_t> mod_env_one_params;
+        adsr_params_t<sample_t> mod_env_two_params;
+
+    };
 
     template<typename sample_t>
     inline const sample_t getModulatedValue(
