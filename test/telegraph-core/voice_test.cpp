@@ -26,7 +26,7 @@ TEST(DSP_Test, ProcessDoesNotExplode) {
         ASSERT_GT(blocks[1][idx], -1.1);
     }
 
-    v = telegraph::noteOn<float,float,2>(v,p,60.0,SR,CR);
+    v = telegraph::noteOn<float,float,2>(v,p,60.0,100,SR,CR);
     v = telegraph::process_control<float, float>(v, p, SR, CR);
 
     std::tie(v,blocks) = telegraph::process<float,float,1024,BLOCKSIZE,2>(v,p, SR);

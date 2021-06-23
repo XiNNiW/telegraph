@@ -354,7 +354,7 @@ void TelegraphAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, ju
             MidiMessage m = it.getMessage();
             if (m.isNoteOn())
             {
-                voices = telegraph::playNote<float, float, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(),SR,CR);
+                voices = telegraph::playNote<float, float, NUMBER_OF_VOICES>(voices, params, m.getChannel(), m.getNoteNumber(), m.getVelocity(), SR, CR);
             }
             else if (m.isNoteOff())
             {

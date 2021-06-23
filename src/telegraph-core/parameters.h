@@ -105,6 +105,9 @@ namespace telegraph {
         lfo_t<sample_t>  vib_lfo alignas(16);
         lfo_t<sample_t>  mod_lfo_1 alignas(16);
         lfo_t<sample_t>  mod_lfo_2 alignas(16);
+        sample_t velocity = 0.75;
+        sample_t mod_wheel = 0;
+        sample_t pitch_bend = 0.5;
     };
 
     template<typename sample_t>
@@ -147,18 +150,19 @@ namespace telegraph {
         const modulators_t<sample_t>& mods, 
         const ModulationMatrix<sample_t>& matrix
     ){
-
+        using algae::dsp::core::math::lerp;
         sample_t val = value;
 
         for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
             const sample_t mod_amount = matrix[source_idx][static_cast<size_t>(dest)];
             switch(source_idx){
-                case static_cast<size_t>(ModSource::AMP_ENV): val+= mods.amp_envelope.env.value*mod_amount; break;
-                case static_cast<size_t>(ModSource::ENV_ONE): val+= mods.mod_envelope_1.env.value*mod_amount; break;
-                case static_cast<size_t>(ModSource::ENV_TWO): val+= mods.mod_envelope_2.env.value*mod_amount; break;
-                case static_cast<size_t>(ModSource::VIB_LFO): val+= mods.mod_lfo_1.value*mod_amount; break;
-                case static_cast<size_t>(ModSource::LFO_ONE): val+= mods.mod_lfo_1.value*mod_amount; break;
-                case static_cast<size_t>(ModSource::LFO_TWO): val+= mods.mod_lfo_1.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::AMP_ENV) : val+= mods.amp_envelope.env.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::ENV_ONE) : val+= mods.mod_envelope_1.env.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::ENV_TWO) : val+= mods.mod_envelope_2.env.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::VIB_LFO) : val+= mods.mod_lfo_1.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::LFO_ONE) : val+= mods.mod_lfo_1.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::LFO_TWO) : val+= mods.mod_lfo_1.value*mod_amount; break;
+                case static_cast<size_t>(ModSource::VELOCITY): val = lerp<sample_t>(val, val*mods.velocity, mod_amount); break;
             }
         }
 

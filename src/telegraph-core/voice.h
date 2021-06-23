@@ -38,9 +38,7 @@ using algae::dsp::core::units::mtof;
 
 #define TWO_PI  2*M_PI 
 
-namespace telegraph{
-
-
+namespace telegraph {
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON>
     struct alignas(16) voice_t {
@@ -288,13 +286,14 @@ namespace telegraph{
 
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON> 
-    const inline voice_t<sample_t,frequency_t,MAX_UNISON> noteOn(voice_t<sample_t,frequency_t,MAX_UNISON> v, const params_t<sample_t>& p, const sample_t& note, const frequency_t& sampleRate, const frequency_t& controlRate){
+    const inline voice_t<sample_t,frequency_t,MAX_UNISON> noteOn(voice_t<sample_t,frequency_t,MAX_UNISON> v, const params_t<sample_t>& p, const sample_t& note, const sample_t& velocity, const frequency_t& sampleRate, const frequency_t& controlRate){
         v.amp_gate = true;
         v.modulators.amp_envelope = adsr_t<sample_t>();
         v.modulators.mod_envelope_1 = adsr_t<sample_t>();
         v.modulators.mod_envelope_2 = adsr_t<sample_t>();
         
         v.note = note;
+        v.modulators.velocity = velocity/127.0;
         frequency_t freq = mtof<frequency_t>(note);
         v.frequency = freq;
 
@@ -332,7 +331,7 @@ namespace telegraph{
             }
         }
 
-        voices[indexOfQuietestVoice] = noteOn<sample_t,frequency_t>(voices[indexOfQuietestVoice], params, noteNumber, sampleRate, controlRate);
+        voices[indexOfQuietestVoice] = noteOn<sample_t,frequency_t>(voices[indexOfQuietestVoice], params, noteNumber, velocity, sampleRate, controlRate);
 
         return voices;
     }
