@@ -14,6 +14,7 @@
 //==============================================================================
 /**
 */
+
 constexpr size_t NUMBER_OF_VOICES = 16;
 constexpr size_t MAX_UNISON = 16;
 constexpr size_t WAVE_TABLE_SIZE = 1024;
@@ -60,44 +61,45 @@ public:
 
 private:
     void updateSynthParams();
-    std::array<telegraph::voice_t<float,float, MAX_UNISON>,NUMBER_OF_VOICES> voices;
+    juce::AudioProcessorValueTreeState parameters;
+    std::array<telegraph::voice_t<float, float, MAX_UNISON>,NUMBER_OF_VOICES> voices;
     telegraph::params_t<float> params;
-    juce::AudioParameterChoice* exciter_pitch;
-    juce::AudioParameterChoice* exciter_waveform;
-    juce::AudioParameterFloat* exciter_gain;
-    juce::AudioParameterFloat* exciter_vibrato_amount;
-    juce::AudioParameterFloat* resonator_q;
-    juce::AudioParameterChoice* resonator_pitch;
-    juce::AudioParameterChoice* resonator_type;
-    juce::AudioParameterFloat* resonator_chaos_character;
-    juce::AudioParameterFloat* resonator_chaos_amount;
-    juce::AudioParameterFloat* attack;
-    juce::AudioParameterFloat* decay;
-    juce::AudioParameterFloat* sustain;
-    juce::AudioParameterFloat* release;
-    juce::AudioParameterFloat* lowpass_cutoff;
-    juce::AudioParameterFloat* lowpass_q;
-    juce::AudioParameterFloat* highpass_cutoff;
-    juce::AudioParameterFloat* stereo_width;
-    juce::AudioParameterInt* unison;
-    juce::AudioParameterFloat* unison_detune;
-    juce::AudioParameterFloat* gain;
+    std::atomic<float>* exciter_pitch;
+    std::atomic<float>* exciter_waveform; //
+    std::atomic<float>* exciter_gain;
+    std::atomic<float>* exciter_vibrato_amount;
+    std::atomic<float>* resonator_q;
+    std::atomic<float>* resonator_pitch;
+    std::atomic<float>* resonator_type; //
+    std::atomic<float>* resonator_chaos_character;
+    std::atomic<float>* resonator_chaos_amount;
+    std::atomic<float>* attack; //
+    std::atomic<float>* decay;//
+    std::atomic<float>* sustain;//
+    std::atomic<float>* release;//
+    std::atomic<float>* lowpass_cutoff;
+    std::atomic<float>* lowpass_q;
+    std::atomic<float>* highpass_cutoff;
+    std::atomic<float>* stereo_width;
+    std::atomic<float>* unison;//
+    std::atomic<float>* unison_detune;
+    std::atomic<float>* gain;
     
-    juce::AudioParameterFloat* env_one_attack;
-    juce::AudioParameterFloat* env_one_decay;
-    juce::AudioParameterFloat* env_one_sustain;
-    juce::AudioParameterFloat* env_one_release;
+    std::atomic<float>* env_one_attack;//
+    std::atomic<float>* env_one_decay;//
+    std::atomic<float>* env_one_sustain;//
+    std::atomic<float>* env_one_release;//
     
-    juce::AudioParameterFloat* env_two_attack;
-    juce::AudioParameterFloat* env_two_decay;
-    juce::AudioParameterFloat* env_two_sustain;
-    juce::AudioParameterFloat* env_two_release;
+    std::atomic<float>* env_two_attack;//
+    std::atomic<float>* env_two_decay;//
+    std::atomic<float>* env_two_sustain;//
+    std::atomic<float>* env_two_release;//
    
-    juce::AudioParameterFloat* exciter_vibrato_speed;
-    juce::AudioParameterFloat* lfo_one_speed;
-    juce::AudioParameterFloat* lfo_two_speed;
+    std::atomic<float>* exciter_vibrato_speed;
+    std::atomic<float>* lfo_one_speed;
+    std::atomic<float>* lfo_two_speed;
 
-    juce::AudioParameterFloat* mod_matrix[telegraph::Size<telegraph::ModSource>()][telegraph::Size<telegraph::ModDestination>()];
+    std::array<std::array<std::atomic<float>*,telegraph::Size<telegraph::ModDestination>()>,telegraph::Size<telegraph::ModSource>()> mod_matrix;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessor)

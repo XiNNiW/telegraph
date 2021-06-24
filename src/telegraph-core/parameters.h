@@ -27,6 +27,25 @@ namespace telegraph {
         _length_
     };
 
+    enum class NonModulatedParameter {
+        EXCITER_TYPE,
+        RESONATOR_TYPE,
+        AMP_ATTACK,
+        AMP_DECAY,
+        AMP_SUSTAIN,
+        AMP_RELEASE,
+        ENV_ONE_ATTACK,
+        ENV_ONE_DECAY,
+        ENV_ONE_SUSTAIN,
+        ENV_ONE_RELEASE,
+        ENV_TWO_ATTACK,
+        ENV_TWO_DECAY,
+        ENV_TWO_SUSTAIN,
+        ENV_TWO_RELEASE,
+        UNISON_AMOUNT,
+        _length_
+    };
+
     enum class ModSource {
         AMP_ENV,
         ENV_ONE,
@@ -46,10 +65,40 @@ namespace telegraph {
     }
 
     template<typename T>
+    inline const size_t to_size_t(T val){
+       return static_cast<size_t>(val); 
+    }
+
+    template<typename T>
+    inline const T cast_to_enum(size_t val){
+        const bool inBounds = val<Size<T>();
+        return inBounds?T(val):T(Size<T>()-1);
+    }
+
+    template<typename T>
     inline const std::string DisplayName(const T& value);
+
+    template<typename T>
+    inline const std::string TokenName(const T& value);
 
     template<>
     inline const std::string DisplayName<ModSource>(const ModSource& value){
+        const std::array<std::string,Size<ModSource>()> names = {
+            "Amp Env",
+            "Mod Env 1",
+            "Mod Env 2",
+            "Vibrato LFO",
+            "Mod LFO 1",
+            "Mod LFO 2",
+            "velocity",
+            "pitch bend",
+            "mod wheel"
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+    template<>
+    inline const std::string TokenName<ModSource>(const ModSource& value){
         const std::array<std::string,Size<ModSource>()> names = {
             "AMP_ENV",
             "ENV_ONE",
@@ -59,13 +108,36 @@ namespace telegraph {
             "LFO_TWO",
             "VELOCITY",
             "PITCH_BEND",
-            "MOD_WHEEL",
+            "MOD_WHEEL"
         };
         return names[static_cast<size_t>(value)];
     }
 
     template<>
     inline const std::string DisplayName<ModDestination>(const ModDestination& value){
+        const std::array<std::string, Size<ModDestination>()> names = {
+            "Vibrato Amount",
+            "Vibrato Speed",
+            "Mod LFO 1: Speed",
+            "Mod LFO 2: Speed",
+            "Exciter Tune",
+            "Exciter Gain",
+            "Resonator Tune",
+            "Resonator Q",
+            "Chaos Amount",
+            "Chaos Character",
+            "Unison Detune",
+            "Lowpass Cutoff",
+            "Lowpass Q",
+            "Highpass Cutoff",
+            "Stereo Width",
+            "Gain"
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+    template<>
+    inline const std::string TokenName<ModDestination>(const ModDestination& value){
         const std::array<std::string, Size<ModDestination>()> names = {
             "VIB_AMOUNT",
             "VIB_SPEED",
@@ -83,6 +155,50 @@ namespace telegraph {
             "HIGHPASS_CUTOFF",
             "STEREO_WIDTH",
             "GAIN",
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+    template<>
+    inline const std::string DisplayName<NonModulatedParameter>(const NonModulatedParameter& value){
+        const std::array<std::string, Size<NonModulatedParameter>()> names = {
+            "Waveform type",
+            "Chaos Type",
+            "Amp Attack",
+            "Amp Decay",
+            "Amp Sustain",
+            "Amp Release",
+            "Mod Env 1: Attack",
+            "Mod Env 1: Decay",
+            "Mod Env 1: Sustain",
+            "Mod Env 1: Release",
+            "Mod Env 2: Attack",
+            "Mod Env 2: Decay",
+            "Mod Env 2: Sustain",
+            "Mod Env 2: Release",
+            "unison"
+        };
+        return names[static_cast<size_t>(value)];
+    }
+
+    template<>
+    inline const std::string TokenName<NonModulatedParameter>(const NonModulatedParameter& value){
+        const std::array<std::string, Size<NonModulatedParameter>()> names = {
+            "EXCITER_TYPE",
+            "RESONATOR_TYPE",
+            "AMP_ATTACK",
+            "AMP_DECAY",
+            "AMP_SUSTAIN",
+            "AMP_RELEASE",
+            "ENV_ONE_ATTACK",
+            "ENV_ONE_DECAY",
+            "ENV_ONE_SUSTAIN",
+            "ENV_ONE_RELEASE",
+            "ENV_TWO_ATTACK",
+            "ENV_TWO_DECAY",
+            "ENV_TWO_SUSTAIN",
+            "ENV_TWO_RELEASE",
+            "UNISON_AMOUNT"
         };
         return names[static_cast<size_t>(value)];
     }
