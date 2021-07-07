@@ -59,10 +59,31 @@ namespace telegraph {
         _length_
     };
 
+
+
+
+
     template<typename T>
     static constexpr size_t Size(){
         return static_cast<size_t>(T::_length_);
     }
+
+    struct ParamId{
+        size_t id;
+        bool canModulate;
+    };
+
+    static constexpr std::array<ParamId,Size<NonModulatedParameter>()+Size<ModDestination>()> GetAllParamIDs(){
+        std::array<ParamId,Size<NonModulatedParameter>()+Size<ModDestination>()> allParams=std::array<ParamId,Size<NonModulatedParameter>()+Size<ModDestination>()>();
+        for(size_t idx=0; idx<Size<NonModulatedParameter>(); idx++){
+            allParams[idx] = ParamId{idx,false};
+        }
+        for(size_t idx=Size<NonModulatedParameter>(); idx<Size<NonModulatedParameter>()+Size<ModDestination>(); idx++){
+            allParams[idx] = ParamId{idx,true};
+        }
+        return allParams;
+    } 
+
 
     template<typename T>
     inline const size_t to_size_t(T val){
