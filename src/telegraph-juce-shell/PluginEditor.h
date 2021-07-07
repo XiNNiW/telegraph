@@ -48,6 +48,12 @@ private:
     std::unique_ptr<SliderAttachment> vibratoDepthAttachment;
     std::unique_ptr<SliderAttachment> vibratoSpeedAttachment;
     std::unique_ptr<SliderAttachment> exciterGainAttachment;
+    std::unique_ptr<ComboBoxAttachment> resonatorTypeAttachment;
+    std::unique_ptr<SliderAttachment>   resonatorTuneAttachment;
+    std::unique_ptr<SliderAttachment>   resonatorQAttachment;
+    std::unique_ptr<SliderAttachment>   chaosAmountAttachment;
+    std::unique_ptr<SliderAttachment>   chaosCharacterAttachment;
+    std::unique_ptr<SliderAttachment>   highPassCutoffAttachment;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessorEditor)

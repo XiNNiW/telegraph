@@ -37,14 +37,7 @@ static void positionKnobOnPanelGrid(
     auto yLoc = (knobSize * (knobPos / knobsPerRow)) + panelBounds.getY();
     auto width = knobSize;
     auto height = knobSize;
-    // knob->setBounds (
-    //     xLoc,
-    //     yLoc,
-    //     width,
-    //     height
-    // );
-    // auto bounds = panelBounds.removeFromTop(yLoc).removeFromRight(xLoc);
-    // bounds.setSize(width,height);
+
     knob->setBounds (
         xLoc,yLoc,width*0.9,height*0.9
     );
@@ -112,7 +105,24 @@ class TelegraphUIContentComponent : public juce::Component {
             return modulePanel.topRow.exciterPanel.exciterGainKnob;
         }
 
-
+        std::unique_ptr<juce::ComboBox>& getResontorTypeSelector(){
+            return modulePanel.topRow.resonatorPanel.resonatorSelector;
+        }
+        std::unique_ptr<juce::Slider>& getResonatorTuneKnob(){
+            return modulePanel.topRow.resonatorPanel.resonatorTuneKnob;
+        }
+        std::unique_ptr<juce::Slider>& getResonatorQKnob(){
+            return modulePanel.topRow.resonatorPanel.resonatorQKnob;
+        }
+        std::unique_ptr<juce::Slider>& getChaosAmountKnob(){
+            return modulePanel.topRow.resonatorPanel.chaosAmountKnob;
+        }
+        std::unique_ptr<juce::Slider>& getChaosCharacter(){
+            return modulePanel.topRow.resonatorPanel.chaosCharacterKnob;
+        }
+        std::unique_ptr<juce::Slider>& getHighpassCutoffKnob(){
+            return modulePanel.topRow.resonatorPanel.highpassCutoffKnob;
+        }
 
         
 
@@ -232,8 +242,6 @@ class TelegraphUIContentComponent : public juce::Component {
                         positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,6,vibratoAmountKnob);
                         positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,7,vibratoSpeedKnob);
 
-                        
-                       
                     }
                     void paint (juce::Graphics& g) override
                     {
@@ -256,10 +264,69 @@ class TelegraphUIContentComponent : public juce::Component {
                 };
                 ExciterPanel exciterPanel;
                 struct ResonatorPanel:juce::Component{
+                    ResonatorPanel()
+                    :resonatorSelector(std::make_unique<juce::ComboBox>())
+                    ,resonatorTuneKnob(std::move(makeTelegraphKnob()))
+                    ,resonatorTuneLabel(std::move(makeTelegraphKnobLabel(resonatorTuneKnob,ModDestination::RESONATOR_FREQ)))
+                    ,resonatorQKnob(std::move(makeTelegraphKnob()))
+                    ,resonatorQLabel(std::move(makeTelegraphKnobLabel(resonatorQKnob,ModDestination::RESONATOR_Q)))
+                    ,chaosAmountKnob(std::move(makeTelegraphKnob()))
+                    ,chaosAmountLabel(std::move(makeTelegraphKnobLabel(chaosAmountKnob,ModDestination::CHAOS_AMOUNT)))
+                    ,chaosCharacterKnob(std::move(makeTelegraphKnob()))
+                    ,chaosCharacterLabel(std::move(makeTelegraphKnobLabel(chaosCharacterKnob,ModDestination::CHAOS_CHARACTER)))
+                    ,highpassCutoffKnob(std::move(makeTelegraphKnob()))
+                    ,highpassCutoffLabel(std::move(makeTelegraphKnobLabel(highpassCutoffKnob,ModDestination::HIGHPASS_CUTOFF)))
+                    {
+                        resonatorSelector->addItem("COS",1);
+                        resonatorSelector->addItem("TANH",2);
+                        resonatorSelector->addItem("WRAP",3);
+                        resonatorSelector->addItem("LOWERED BELL",4);
+                        addAndMakeVisible(*resonatorSelector);
+                        addAndMakeVisible(*resonatorTuneKnob);
+                        addAndMakeVisible(*resonatorTuneLabel);
+                        addAndMakeVisible(*resonatorQKnob);
+                        addAndMakeVisible(*resonatorQLabel);
+                        addAndMakeVisible(*chaosAmountKnob);
+                        addAndMakeVisible(*chaosAmountLabel);
+                        addAndMakeVisible(*chaosCharacterKnob);
+                        addAndMakeVisible(*chaosCharacterLabel);
+                        addAndMakeVisible(*highpassCutoffKnob);
+                        addAndMakeVisible(*highpassCutoffLabel);
+                    }
+                    void resized() override {
+                        auto bounds = getLocalBounds();
+                        auto dropdownWidth = 2*bounds.getWidth() / 3;
+                        auto dropdownHeight = bounds.getWidth() / 4;
+                        auto topInset = bounds.getHeight()/16;
+                        resonatorSelector->setBounds ( 
+                            (bounds.getWidth()-dropdownWidth)/2,
+                            topInset,
+                            dropdownWidth,
+                            dropdownHeight
+                        );
+                        
+                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,0,resonatorTuneKnob);
+                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,1,resonatorQKnob);
+                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,3,chaosAmountKnob);
+                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,4,chaosCharacterKnob);
+                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,6,highpassCutoffKnob);
+
+                    }
                     void paint (juce::Graphics& g) override
                     {
                         g.fillAll (juce::Colours::dimgrey);
                     }
+                    std::unique_ptr<juce::ComboBox> resonatorSelector;
+                    std::unique_ptr<juce::Slider> resonatorTuneKnob;
+                    std::unique_ptr<juce::Label> resonatorTuneLabel;
+                    std::unique_ptr<juce::Slider> resonatorQKnob;
+                    std::unique_ptr<juce::Label> resonatorQLabel;
+                    std::unique_ptr<juce::Slider> chaosAmountKnob;
+                    std::unique_ptr<juce::Label> chaosAmountLabel;
+                    std::unique_ptr<juce::Slider> chaosCharacterKnob;
+                    std::unique_ptr<juce::Label> chaosCharacterLabel;
+                    std::unique_ptr<juce::Slider> highpassCutoffKnob;
+                    std::unique_ptr<juce::Label> highpassCutoffLabel;
                 };
                 ResonatorPanel resonatorPanel;
                 struct AmpPanel:juce::Component{

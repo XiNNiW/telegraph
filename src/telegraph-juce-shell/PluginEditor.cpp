@@ -78,6 +78,49 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getExciterGainKnob()
       )
     );
+    resonatorTypeAttachment.reset (
+      new ComboBoxAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::RESONATOR_TYPE), 
+        *ui.getResontorTypeSelector()
+      )
+    );
+    
+    resonatorTuneAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::RESONATOR_FREQ), 
+        *ui.getResonatorTuneKnob()
+      )
+    );
+    resonatorQAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::RESONATOR_Q), 
+        *ui.getResonatorQKnob()
+      )
+    );
+    chaosAmountAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::CHAOS_AMOUNT), 
+        *ui.getChaosAmountKnob()
+      )
+    );
+    chaosCharacterAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::CHAOS_CHARACTER), 
+        *ui.getChaosCharacter()
+      )
+    );
+    highPassCutoffAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::HIGHPASS_CUTOFF), 
+        *ui.getHighpassCutoffKnob()
+      )
+    );
     
 
 
