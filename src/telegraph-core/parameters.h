@@ -139,8 +139,8 @@ namespace telegraph {
         const std::array<std::string, Size<ModDestination>()> names = {
             "Vibrato Amount",
             "Vibrato Speed",
-            "Mod LFO 1: Speed",
-            "Mod LFO 2: Speed",
+            "Speed",
+            "Speed",
             "Exciter Tune",
             "Exciter Gain",
             "Resonator Tune",
@@ -185,19 +185,19 @@ namespace telegraph {
         const std::array<std::string, Size<NonModulatedParameter>()> names = {
             "Waveform type",
             "Chaos Type",
-            "Amp Attack",
-            "Amp Decay",
-            "Amp Sustain",
-            "Amp Release",
-            "Mod Env 1: Attack",
-            "Mod Env 1: Decay",
-            "Mod Env 1: Sustain",
-            "Mod Env 1: Release",
-            "Mod Env 2: Attack",
-            "Mod Env 2: Decay",
-            "Mod Env 2: Sustain",
-            "Mod Env 2: Release",
-            "unison"
+            "A",
+            "D",
+            "S",
+            "R",
+            "A",
+            "D",
+            "S",
+            "R",
+            "A",
+            "D",
+            "S",
+            "R",
+            "Unison"
         };
         return names[static_cast<size_t>(value)];
     }

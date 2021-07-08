@@ -121,8 +121,162 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getHighpassCutoffKnob()
       )
     );
-    
 
+    lowpasCutoffKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::LOWPASS_CUTOFF), 
+        *ui.getLowpasCutoffKnob()
+      )
+    );
+    lowpassQKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::LOWPASS_Q), 
+        *ui.getLowpassQKnob()
+      )
+    );
+    // ampMapButtonKnobAttachment.reset (
+    //   new ButtonAttachment (
+    //     stateTree, 
+    //     TokenName<ModDestination>(ModDestination::HIGHPASS_CUTOFF), 
+    //     *ui.getHighpassCutoffKnob()
+    //   )
+    // );
+    ampAttackKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::AMP_ATTACK), 
+        *ui.getAmpAttackKnob()
+      )
+    );
+    ampDecayKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::AMP_DECAY), 
+        *ui.getAmpDecayKnob()
+      )
+    );
+    ampSustainKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::AMP_SUSTAIN), 
+        *ui.getAmpSustainKnob()
+      )
+    );
+    ampReleaseKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::AMP_RELEASE), 
+        *ui.getAmpReleaseKnob()
+      )
+    );
+    mainGainKnobAttachment.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::GAIN), 
+        *ui.getMainGainKnob()
+      )
+    );
+    // modEnv1MapButton.reset (
+    //   new SliderAttachment (
+    //     stateTree, 
+    //     TokenName<ModDestination>(ModDestination::GAIN), 
+    //     *ui.getMainGainKnob()
+    //   )
+    // );
+    modEnv1AttackKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_ONE_ATTACK), 
+        *ui.getModEnv1AttackKnob()
+      )
+    );
+    modEnv1DecayKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_ONE_DECAY), 
+        *ui.getModEnv1DecayKnob()
+      )
+    );
+    modEnv1SustainKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_ONE_SUSTAIN), 
+        *ui.getModEnv1SustainKnob()
+      )
+    );
+    modEnv1ReleaseKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_ONE_RELEASE), 
+        *ui.getModEnv1ReleaseKnob()
+      )
+    );
+    // modEnv2MapButton.reset (
+    //   new SliderAttachment (
+    //     stateTree, 
+    //     TokenName<ModDestination>(ModDestination::GAIN), 
+    //     *ui.getMainGainKnob()
+    //   )
+    // );
+    modEnv2AttackKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_TWO_ATTACK), 
+        *ui.getModEnv2AttackKnob()
+      )
+    );
+    modEnv2DecayKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_TWO_DECAY), 
+        *ui.getModEnv2DecayKnob()
+      )
+    );
+    modEnv2SustainKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_TWO_SUSTAIN), 
+        *ui.getModEnv2SustainKnob()
+      )
+    );
+    modEnv2ReleaseKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<NonModulatedParameter>(NonModulatedParameter::ENV_TWO_RELEASE), 
+        *ui.getModEnv2ReleaseKnob()
+      )
+    );
+    // modLFO1MapButton.reset (
+    //   new SliderAttachment (
+    //     stateTree, 
+    //     TokenName<ModDestination>(ModDestination::GAIN), 
+    //     *ui.getMainGainKnob()
+    //   )
+    // );
+    modLFO1SpeedKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::LFO_ONE_SPEED), 
+        *ui.getModLFO1SpeedKnob()
+      )
+    );
+    // modLFO2MapButton.reset (
+    //   new SliderAttachment (
+    //     stateTree, 
+    //     TokenName<ModDestination>(ModDestination::LFO_ONE_SPEED), 
+    //     *ui.getModLFO1SpeedKnob()
+    //   )
+    // );
+    modLFO2SpeedKnob.reset (
+      new SliderAttachment (
+        stateTree, 
+        TokenName<ModDestination>(ModDestination::LFO_TWO_SPEED), 
+        *ui.getModLFO2SpeedKnob()
+      )
+    );
+  
 
     addAndMakeVisible(ui);
 
