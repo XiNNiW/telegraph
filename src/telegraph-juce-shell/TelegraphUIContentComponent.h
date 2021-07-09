@@ -2,7 +2,7 @@
 #include <JuceHeader.h>
 #include "telegraph_core.h"
 #include <utility>
-#include <tuple>
+#include <optional>
 
 using telegraph::ModDestination;
 using telegraph::NonModulatedParameter;
@@ -11,6 +11,24 @@ static std::unique_ptr<juce::Slider> makeTelegraphKnob(){
     auto knob=std::make_unique<juce::Slider>();
     knob->setSliderStyle (juce::Slider::SliderStyle::Rotary);
     knob->setTextBoxStyle (juce::Slider::TextBoxAbove, true, 20, 0);
+    
+    return knob;
+}
+
+static void styleTelegraphModulationKnob(juce::Slider* knob){
+    knob->setSliderStyle (juce::Slider::SliderStyle::Rotary);
+    knob->setTextBoxStyle (juce::Slider::TextBoxBelow, true, 20, 0);
+    knob->setVisible(false);
+    knob->toBack();
+    knob->setColour(juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
+    knob->setColour(juce::Slider::thumbColourId, juce::Colours::transparentBlack);
+    knob->setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::turquoise);
+    knob->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::transparentBlack);
+}
+
+static std::unique_ptr<juce::Slider> makeTelegraphModulationAmountKnob(){
+    auto knob=std::make_unique<juce::Slider>();
+    styleTelegraphModulationKnob(knob.get());
     
     return knob;
 }
@@ -63,13 +81,23 @@ class TelegraphUIContentComponent : public juce::Component {
             paramLabelWidth    = 80,
             paramSliderWidth   = 300
         };
+        enum class Mode {
+            SYNTH_EDIT,
+            MODULATION_EDIT
+        };
         TelegraphUIContentComponent()
         : 
-          headerPanel(juce::Colours::lightgrey),
+          headerPanel(),
           modulePanel()
         {
             addAndMakeVisible(headerPanel);
             addAndMakeVisible(modulePanel);
+            using telegraph::ModDestination;
+            using telegraph::Size;
+            for(size_t idx=0; idx<Size<ModDestination>(); idx++){
+                modulationAmountKnobs[ModDestination(idx)] = makeTelegraphModulationAmountKnob();
+                addAndMakeVisible(*modulationAmountKnobs[ModDestination(idx)]);
+            }
         }
         void paint (juce::Graphics& g) override
         {
@@ -77,83 +105,150 @@ class TelegraphUIContentComponent : public juce::Component {
         }
         void resized() override
         {
+            using telegraph::Size;
+            using telegraph::ModDestination;
+            using telegraph::ModSource;
             auto bounds = getLocalBounds();
 
             auto height = bounds.getHeight();
 
             headerPanel.setBounds  (bounds.removeFromTop  (height/16));
             modulePanel.setBounds  (bounds.removeFromTop  (15*height/16));
+            for(size_t idx=0; idx<Size<ModDestination>(); idx++){
+                auto maybeComponent = getModulationDestinationComponent(ModDestination(idx));
+                if(maybeComponent){
+                    // ui.modulationAmountKnobs[ModDestination(idx)]->showAt(
+                    //     maybeComponent.value(),
+                    //     AttributedString("poop"),
+                    //     1000,
+                    //     false,
+                    //     false
+                    // );
+                    // juce::BubbleMessageComponent
+                    auto targetKnob = maybeComponent.value();
+              
+                    if(currentEditMode==Mode::MODULATION_EDIT){
+                        
+
+                        modulationAmountKnobs[ModDestination(idx)]->setBounds(modulationAmountKnobs[ModDestination(idx)]->getParentComponent()->getLocalArea (targetKnob, targetKnob->getLocalBounds()));
+                        modulationAmountKnobs[ModDestination(idx)]->setVisible(true);
+                        modulationAmountKnobs[ModDestination(idx)]->toFront(false);
+                        targetKnob->setComponentEffect (&modulationGlow);
+                    } else {
+                        modulationAmountKnobs[ModDestination(idx)]->setVisible(false);
+                        modulationAmountKnobs[ModDestination(idx)]->toBack();
+                        targetKnob->setComponentEffect (nullptr);
+                    }
+                    
+                }
+            }
 
         }
         // EXCITER PANEL
-        std::unique_ptr<juce::ComboBox>& getExciterTypeSelector(){
-            return modulePanel.topRow.exciterPanel.exciterSelector;
-        }
-        std::unique_ptr<juce::Slider>& getExciterTuneKnob(){
-            return modulePanel.topRow.exciterPanel.exciterTuneKnob;
-        }
-        std::unique_ptr<juce::Slider>& getUnisonAmountKnob(){
-            return modulePanel.topRow.exciterPanel.unisonKnob;
-        }
-        std::unique_ptr<juce::Slider>& getUnisonDetuneKnob(){
-            return modulePanel.topRow.exciterPanel.detuneKnob;
-        }
-        std::unique_ptr<juce::Slider>& getVibratoDepthKnob(){
-            return modulePanel.topRow.exciterPanel.vibratoAmountKnob;
-        }
-        std::unique_ptr<juce::Slider>& getVibratoSpeedKnob(){
-            return modulePanel.topRow.exciterPanel.vibratoSpeedKnob;
-        }
-        std::unique_ptr<juce::Slider>& getExciterGainKnob(){
-            return modulePanel.topRow.exciterPanel.exciterGainKnob;
-        }
+        std::unique_ptr<juce::ComboBox>& getExciterTypeSelector(){return modulePanel.topRow.exciterPanel.exciterSelector;}
+        std::unique_ptr<juce::Slider>& getExciterTuneKnob(){return modulePanel.topRow.exciterPanel.exciterTuneKnob;}
+        std::unique_ptr<juce::Slider>& getUnisonAmountKnob(){return modulePanel.topRow.exciterPanel.unisonKnob;}
+        std::unique_ptr<juce::Slider>& getUnisonDetuneKnob(){return modulePanel.topRow.exciterPanel.detuneKnob;}
+        std::unique_ptr<juce::Slider>& getVibratoDepthKnob(){return modulePanel.topRow.exciterPanel.vibratoAmountKnob;}
+        std::unique_ptr<juce::Slider>& getVibratoSpeedKnob(){return modulePanel.topRow.exciterPanel.vibratoSpeedKnob;}
+        std::unique_ptr<juce::Slider>& getExciterGainKnob(){return modulePanel.topRow.exciterPanel.exciterGainKnob;}
         // RESONATOR PANEL
-        std::unique_ptr<juce::ComboBox>& getResontorTypeSelector(){
-            return modulePanel.topRow.resonatorPanel.resonatorSelector;
-        }
-        std::unique_ptr<juce::Slider>& getResonatorTuneKnob(){
-            return modulePanel.topRow.resonatorPanel.resonatorTuneKnob;
-        }
-        std::unique_ptr<juce::Slider>& getResonatorQKnob(){
-            return modulePanel.topRow.resonatorPanel.resonatorQKnob;
-        }
-        std::unique_ptr<juce::Slider>& getChaosAmountKnob(){
-            return modulePanel.topRow.resonatorPanel.chaosAmountKnob;
-        }
-        std::unique_ptr<juce::Slider>& getChaosCharacter(){
-            return modulePanel.topRow.resonatorPanel.chaosCharacterKnob;
-        }
-        std::unique_ptr<juce::Slider>& getHighpassCutoffKnob(){
-            return modulePanel.topRow.resonatorPanel.highpassCutoffKnob;
-        }
+        std::unique_ptr<juce::ComboBox>& getResontorTypeSelector(){return modulePanel.topRow.resonatorPanel.resonatorSelector;}
+        std::unique_ptr<juce::Slider>& getResonatorTuneKnob(){return modulePanel.topRow.resonatorPanel.resonatorTuneKnob;}
+        std::unique_ptr<juce::Slider>& getResonatorQKnob(){return modulePanel.topRow.resonatorPanel.resonatorQKnob;}
+        std::unique_ptr<juce::Slider>& getChaosAmountKnob(){return modulePanel.topRow.resonatorPanel.chaosAmountKnob;}
+        std::unique_ptr<juce::Slider>& getChaosCharacterKnob(){return modulePanel.topRow.resonatorPanel.chaosCharacterKnob;}
+        std::unique_ptr<juce::Slider>& getHighpassCutoffKnob(){return modulePanel.topRow.resonatorPanel.highpassCutoffKnob;}
         //AMP PANEL
         std::unique_ptr<juce::Slider>& getLowpasCutoffKnob(){return modulePanel.topRow.ampPanel.lowpassCutoffKnob;}
         std::unique_ptr<juce::Slider>& getLowpassQKnob(){return modulePanel.topRow.ampPanel.lowpassQKnob;}
-        std::unique_ptr<juce::TextButton>& getAmpMapButton(){return modulePanel.topRow.ampPanel.ampMapBtn;}
+        std::unique_ptr<juce::ArrowButton>& getAmpMapButton(){return modulePanel.topRow.ampPanel.ampMapBtn;}
         std::unique_ptr<juce::Slider>& getAmpAttackKnob(){return modulePanel.topRow.ampPanel.ampAttackKnob;}
         std::unique_ptr<juce::Slider>& getAmpDecayKnob(){return modulePanel.topRow.ampPanel.ampDecayKnob;}
         std::unique_ptr<juce::Slider>& getAmpSustainKnob(){return modulePanel.topRow.ampPanel.ampSustainKnob;}
         std::unique_ptr<juce::Slider>& getAmpReleaseKnob(){return modulePanel.topRow.ampPanel.ampReleaseKnob;}
         std::unique_ptr<juce::Slider>& getMainGainKnob(){return modulePanel.topRow.ampPanel.finalGainKnob;}
         //MODULATION PANL
-        std::unique_ptr<juce::TextButton>& getModEnv1MapButton(){return modulePanel.bottomRow.modEnv1MapBtn;}
+        std::unique_ptr<juce::ArrowButton>& getModEnv1MapButton(){return modulePanel.bottomRow.modEnv1MapBtn;}
         std::unique_ptr<juce::Slider>& getModEnv1AttackKnob(){return modulePanel.bottomRow.modEnv1AttackKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1DecayKnob(){return modulePanel.bottomRow.modEnv1DecayKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1SustainKnob(){return modulePanel.bottomRow.modEnv1SustainKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1ReleaseKnob(){return modulePanel.bottomRow.modEnv1ReleaseKnob;}
-        std::unique_ptr<juce::TextButton>& getModEnv2MapButton(){return modulePanel.bottomRow.modEnv2MapBtn;}
+        std::unique_ptr<juce::ArrowButton>& getModEnv2MapButton(){return modulePanel.bottomRow.modEnv2MapBtn;}
         std::unique_ptr<juce::Slider>& getModEnv2AttackKnob(){return modulePanel.bottomRow.modEnv2AttackKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2DecayKnob(){return modulePanel.bottomRow.modEnv2DecayKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2SustainKnob(){return modulePanel.bottomRow.modEnv2SustainKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2ReleaseKnob(){return modulePanel.bottomRow.modEnv2ReleaseKnob;}
-        std::unique_ptr<juce::TextButton>& getModLFO1MapButton(){return modulePanel.bottomRow.modLFO1MapBtn;}
+        std::unique_ptr<juce::ArrowButton>& getModLFO1MapButton(){return modulePanel.bottomRow.modLFO1MapBtn;}
         std::unique_ptr<juce::Slider>& getModLFO1SpeedKnob(){return modulePanel.bottomRow.modLFO1SpeedKnob;}
-        std::unique_ptr<juce::TextButton>& getModLFO2MapButton(){return modulePanel.bottomRow.modLFO2MapBtn;}
+        std::unique_ptr<juce::ArrowButton>& getModLFO2MapButton(){return modulePanel.bottomRow.modLFO2MapBtn;}
         std::unique_ptr<juce::Slider>& getModLFO2SpeedKnob(){return modulePanel.bottomRow.modLFO2SpeedKnob;}
+
+        const std::optional<juce::Component*> getModulationDestinationComponent(ModDestination paramId){
+            switch (paramId)
+            {
+            case ModDestination::VIB_AMOUNT:
+                return std::optional{getVibratoDepthKnob().get()};
+                break;
+            case ModDestination::VIB_SPEED:
+                return std::optional{getVibratoSpeedKnob().get()};
+                break;
+            case ModDestination::LFO_ONE_SPEED:
+                return std::optional{getModLFO1SpeedKnob().get()};
+                break;
+            case ModDestination::LFO_TWO_SPEED:
+                return std::optional{getModLFO2SpeedKnob().get()};
+                break;
+            case ModDestination::EXCITER_FREQ:
+                return std::optional{getExciterTuneKnob().get()};
+                break;
+            case ModDestination::EXCITER_GAIN:
+                return std::optional{getExciterGainKnob().get()};
+                break;
+            case ModDestination::RESONATOR_FREQ:
+                return std::optional{getResonatorTuneKnob().get()};
+                break;
+            case ModDestination::RESONATOR_Q:
+                return std::optional{getResonatorQKnob().get()};
+                break;
+            case ModDestination::CHAOS_AMOUNT:
+                return std::optional{getChaosAmountKnob().get()};
+                break;
+            case ModDestination::CHAOS_CHARACTER:
+                return std::optional{getChaosCharacterKnob().get()};
+                break;
+            case ModDestination::DETUNE:
+                return std::optional{getUnisonDetuneKnob().get()};
+                break;
+            case ModDestination::LOWPASS_CUTOFF:
+                return std::optional{getLowpasCutoffKnob().get()};
+                break;
+            case ModDestination::LOWPASS_Q:
+                return std::optional{getLowpassQKnob().get()};
+                break;
+            case ModDestination::HIGHPASS_CUTOFF:
+                return std::optional{getHighpassCutoffKnob().get()};
+                break;
+            case ModDestination::STEREO_WIDTH:
+                return std::nullopt;
+                break;
+            case ModDestination::GAIN:
+                return std::optional{getMainGainKnob().get()};
+                break;
+            
+            default:
+                return std::nullopt;
+                break;
+            }
+            
+        }
+        std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>> modulationAmountKnobs = std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>();
+        Mode currentEditMode=Mode::SYNTH_EDIT; 
+        GlowEffect modulationGlow = GlowEffect();
         
     private:
         struct HeaderPanel: public juce::Component{
-            HeaderPanel(juce::Colour c):backgroundColour(c){}
+            HeaderPanel():backgroundColour(juce::Colours::transparentBlack){}
             void paint (juce::Graphics& g) override
             {
                 g.fillAll (backgroundColour);
@@ -264,7 +359,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     }
                     void paint (juce::Graphics& g) override
                     {
-                        g.fillAll (juce::Colours::blue);
+                        g.fillAll (juce::Colours::darkgrey);
                     }
                     std::unique_ptr<juce::ComboBox> exciterSelector;
                     std::unique_ptr<juce::Slider> exciterTuneKnob;
@@ -354,7 +449,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     ,lowpassCutoffLabel(std::move(makeTelegraphKnobLabel(lowpassCutoffKnob.get(),ModDestination::LOWPASS_CUTOFF)))
                     ,lowpassQKnob(std::move(makeTelegraphKnob()))
                     ,lowpassQLabel(std::move(makeTelegraphKnobLabel(lowpassQKnob.get(),ModDestination::LOWPASS_Q)))
-                    ,ampMapBtn(std::make_unique<juce::TextButton>("map"))
+                    ,ampMapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
                     ,ampMapLabel(std::move(makeKnobLabel(ampMapBtn.get(),"Amp Env:")))
                     ,ampAttackKnob(std::move(makeTelegraphKnob()))
                     ,ampAttackLabel(std::move(makeTelegraphKnobLabel(ampAttackKnob.get(),NonModulatedParameter::AMP_ATTACK)))
@@ -406,7 +501,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     std::unique_ptr<juce::Label>      lowpassCutoffLabel;
                     std::unique_ptr<juce::Slider>     lowpassQKnob;
                     std::unique_ptr<juce::Label>      lowpassQLabel;
-                    std::unique_ptr<juce::TextButton> ampMapBtn;
+                    std::unique_ptr<juce::ArrowButton> ampMapBtn;
                     std::unique_ptr<juce::Label>      ampMapLabel;
                     std::unique_ptr<juce::Slider>     ampAttackKnob;
                     std::unique_ptr<juce::Label>      ampAttackLabel;
@@ -426,7 +521,7 @@ class TelegraphUIContentComponent : public juce::Component {
             TopRow topRow;
             struct BottomRow: public juce::Component{
                 BottomRow()
-                :modEnv1MapBtn(std::make_unique<juce::TextButton>("map"))
+                :modEnv1MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
                 ,modEnv1MapLabel(std::move(makeKnobLabel(modEnv1MapBtn.get(),"Env 1:")))
                 ,modEnv1AttackKnob(std::move(makeTelegraphKnob()))
                 ,modEnv1AttackLabel(std::move(makeTelegraphKnobLabel(modEnv1AttackKnob.get(), NonModulatedParameter::ENV_ONE_ATTACK)))
@@ -436,7 +531,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 ,modEnv1SustainLabel(std::move(makeTelegraphKnobLabel(modEnv1SustainKnob.get(), NonModulatedParameter::ENV_ONE_SUSTAIN)))
                 ,modEnv1ReleaseKnob(std::move(makeTelegraphKnob()))
                 ,modEnv1ReleaseLabel(std::move(makeTelegraphKnobLabel(modEnv1ReleaseKnob.get(), NonModulatedParameter::ENV_ONE_RELEASE)))
-                ,modEnv2MapBtn(std::make_unique<juce::TextButton>("map"))
+                ,modEnv2MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
                 ,modEnv2MapLabel(std::move(makeKnobLabel(modEnv2MapBtn.get(),"Env 2:")))
                 ,modEnv2AttackKnob(std::move(makeTelegraphKnob()))
                 ,modEnv2AttackLabel(std::move(makeTelegraphKnobLabel(modEnv2AttackKnob.get(), NonModulatedParameter::ENV_TWO_ATTACK)))
@@ -446,11 +541,11 @@ class TelegraphUIContentComponent : public juce::Component {
                 ,modEnv2SustainLabel(std::move(makeTelegraphKnobLabel(modEnv2SustainKnob.get(), NonModulatedParameter::ENV_TWO_SUSTAIN)))
                 ,modEnv2ReleaseKnob(std::move(makeTelegraphKnob()))
                 ,modEnv2ReleaseLabel(std::move(makeTelegraphKnobLabel(modEnv2ReleaseKnob.get(), NonModulatedParameter::ENV_TWO_RELEASE)))
-                ,modLFO1MapBtn(std::make_unique<juce::TextButton>("map"))
+                ,modLFO1MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
                 ,modLFO1MapLabel(std::move(makeKnobLabel(modLFO1MapBtn.get(),"LFO 1:")))
                 ,modLFO1SpeedKnob(std::move(makeTelegraphKnob()))
                 ,modLFO1SpeedLabel(std::move(makeTelegraphKnobLabel(modLFO1SpeedKnob.get(), ModDestination::LFO_ONE_SPEED)))
-                ,modLFO2MapBtn(std::make_unique<juce::TextButton>("map"))
+                ,modLFO2MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
                 ,modLFO2MapLabel(std::move(makeKnobLabel(modLFO2MapBtn.get(),"LFO 2:")))
                 ,modLFO2SpeedKnob(std::move(makeTelegraphKnob()))
                 ,modLFO2SpeedLabel(std::move(makeTelegraphKnobLabel(modLFO2SpeedKnob.get(), ModDestination::LFO_TWO_SPEED)))
@@ -509,7 +604,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 {
                     g.fillAll (juce::Colours::transparentBlack);
                 }
-                std::unique_ptr<juce::TextButton> modEnv1MapBtn;
+                std::unique_ptr<juce::ArrowButton> modEnv1MapBtn;
                 std::unique_ptr<juce::Label>      modEnv1MapLabel;
                 std::unique_ptr<juce::Slider>     modEnv1AttackKnob;
                 std::unique_ptr<juce::Label>      modEnv1AttackLabel;
@@ -519,7 +614,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 std::unique_ptr<juce::Label>      modEnv1SustainLabel;
                 std::unique_ptr<juce::Slider>     modEnv1ReleaseKnob;
                 std::unique_ptr<juce::Label>      modEnv1ReleaseLabel;
-                std::unique_ptr<juce::TextButton> modEnv2MapBtn;
+                std::unique_ptr<juce::ArrowButton> modEnv2MapBtn;
                 std::unique_ptr<juce::Label>      modEnv2MapLabel;
                 std::unique_ptr<juce::Slider>     modEnv2AttackKnob;
                 std::unique_ptr<juce::Label>      modEnv2AttackLabel;
@@ -529,11 +624,11 @@ class TelegraphUIContentComponent : public juce::Component {
                 std::unique_ptr<juce::Label>      modEnv2SustainLabel;
                 std::unique_ptr<juce::Slider>     modEnv2ReleaseKnob;
                 std::unique_ptr<juce::Label>      modEnv2ReleaseLabel;
-                std::unique_ptr<juce::TextButton> modLFO1MapBtn;
+                std::unique_ptr<juce::ArrowButton> modLFO1MapBtn;
                 std::unique_ptr<juce::Label>      modLFO1MapLabel;
                 std::unique_ptr<juce::Slider>     modLFO1SpeedKnob;
                 std::unique_ptr<juce::Label>      modLFO1SpeedLabel;
-                std::unique_ptr<juce::TextButton> modLFO2MapBtn;
+                std::unique_ptr<juce::ArrowButton> modLFO2MapBtn;
                 std::unique_ptr<juce::Label>      modLFO2MapLabel;
                 std::unique_ptr<juce::Slider>     modLFO2SpeedKnob;
                 std::unique_ptr<juce::Label>      modLFO2SpeedLabel;

@@ -17,18 +17,16 @@ using telegraph::NonModulatedParameter;
 
 //==============================================================================
 TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProcessor& p, juce::AudioProcessorValueTreeState& t)
-    : AudioProcessorEditor (&p), audioProcessor (p), stateTree(t)
+    : AudioProcessorEditor (&p), audioProcessor (p), stateTree(t), modulationButtonListener(ModMapButtonListener(ui))
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-
-    // //GAIN
-    // mainGainLabel.setText (DisplayName<ModDestination>(ModDestination::GAIN), juce::dontSendNotification);
-    // addAndMakeVisible (mainGainLabel);
-
-    // addAndMakeVisible (mainGainKnob);
-    // mainGainAttachment.reset (new SliderAttachment (stateTree, TokenName<ModDestination>(ModDestination::GAIN), mainGainKnob));
-    // // END GAINd
+    using telegraph::ModSource;
+    modulationButtonListener.attach(ModSource::AMP_ENV,*ui.getAmpMapButton());
+    modulationButtonListener.attach(ModSource::ENV_ONE,*ui.getModEnv1MapButton());
+    modulationButtonListener.attach(ModSource::ENV_TWO,*ui.getModEnv2MapButton());
+    modulationButtonListener.attach(ModSource::LFO_ONE,*ui.getModLFO1MapButton());
+    modulationButtonListener.attach(ModSource::LFO_TWO,*ui.getModLFO2MapButton());
     exciterTypeAttachment.reset (
       new ComboBoxAttachment (
         stateTree, 
@@ -111,7 +109,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
       new SliderAttachment (
         stateTree, 
         TokenName<ModDestination>(ModDestination::CHAOS_CHARACTER), 
-        *ui.getChaosCharacter()
+        *ui.getChaosCharacterKnob()
       )
     );
     highPassCutoffAttachment.reset (
@@ -136,13 +134,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getLowpassQKnob()
       )
     );
-    // ampMapButtonKnobAttachment.reset (
-    //   new ButtonAttachment (
-    //     stateTree, 
-    //     TokenName<ModDestination>(ModDestination::HIGHPASS_CUTOFF), 
-    //     *ui.getHighpassCutoffKnob()
-    //   )
-    // );
+
     ampAttackKnobAttachment.reset (
       new SliderAttachment (
         stateTree, 
@@ -277,7 +269,6 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
       )
     );
   
-
     addAndMakeVisible(ui);
 
     setSize (1000, 900);

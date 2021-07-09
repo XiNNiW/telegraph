@@ -10,7 +10,8 @@
 
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
-#include "UIComponents.h"
+#include "TelegraphUIContentComponent.h"
+#include "ModMapButtonListener.h"
 
 //==============================================================================
 /**
@@ -56,26 +57,23 @@ private:
     std::unique_ptr<SliderAttachment>   highPassCutoffAttachment;
     std::unique_ptr<SliderAttachment> lowpasCutoffKnobAttachment;
     std::unique_ptr<SliderAttachment> lowpassQKnobAttachment;
-    std::unique_ptr<ButtonAttachment> ampMapButtonKnobAttachment;
     std::unique_ptr<SliderAttachment> ampAttackKnobAttachment;
     std::unique_ptr<SliderAttachment> ampDecayKnobAttachment;
     std::unique_ptr<SliderAttachment> ampSustainKnobAttachment;
     std::unique_ptr<SliderAttachment> ampReleaseKnobAttachment;
     std::unique_ptr<SliderAttachment> mainGainKnobAttachment;
-    std::unique_ptr<ButtonAttachment> modEnv1MapButton;
     std::unique_ptr<SliderAttachment> modEnv1AttackKnob;
     std::unique_ptr<SliderAttachment> modEnv1DecayKnob;
     std::unique_ptr<SliderAttachment> modEnv1SustainKnob;
     std::unique_ptr<SliderAttachment> modEnv1ReleaseKnob;
-    std::unique_ptr<ButtonAttachment> modEnv2MapButton;
     std::unique_ptr<SliderAttachment> modEnv2AttackKnob;
     std::unique_ptr<SliderAttachment> modEnv2DecayKnob;
     std::unique_ptr<SliderAttachment> modEnv2SustainKnob;
     std::unique_ptr<SliderAttachment> modEnv2ReleaseKnob;
-    std::unique_ptr<ButtonAttachment> modLFO1MapButton;
     std::unique_ptr<SliderAttachment> modLFO1SpeedKnob;
-    std::unique_ptr<ButtonAttachment> modLFO2MapButton;
     std::unique_ptr<SliderAttachment> modLFO2SpeedKnob;
+
+    ModMapButtonListener modulationButtonListener;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessorEditor)
