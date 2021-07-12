@@ -72,6 +72,8 @@ private:
     std::unique_ptr<SliderAttachment> modEnv2ReleaseKnob;
     std::unique_ptr<SliderAttachment> modLFO1SpeedKnob;
     std::unique_ptr<SliderAttachment> modLFO2SpeedKnob;
+    // std::map<telegraph::ModDestination,std::unique_ptr<SliderAttachment>> modulationKnobs;
+    std::map<telegraph::ModSource,std::map<telegraph::ModDestination,std::unique_ptr<SliderAttachment>>> modulationMatrixKnobs;
 
     ModMapButtonListener modulationButtonListener;
 

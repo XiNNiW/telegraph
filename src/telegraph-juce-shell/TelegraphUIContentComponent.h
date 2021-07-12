@@ -33,6 +33,12 @@ static std::unique_ptr<juce::Slider> makeTelegraphModulationAmountKnob(){
     return knob;
 }
 
+static std::unique_ptr<juce::TextButton> makeTelegraphModMapButton(){
+    auto button = std::make_unique<juce::TextButton>("map","");
+    button->setColour(TextButton::buttonOnColourId, juce::Colours::transparentBlack);
+    return button;
+}
+
 template<typename T>
 static std::unique_ptr<juce::Label> makeTelegraphKnobLabel(juce::Component* knob, T paramId){
     auto label = std::make_unique<juce::Label>();
@@ -74,6 +80,7 @@ static void positionKnobOnPanelGrid(
 }
 
 class TelegraphUIContentComponent : public juce::Component {
+    
     public:
         enum
         {
@@ -90,13 +97,18 @@ class TelegraphUIContentComponent : public juce::Component {
           headerPanel(),
           modulePanel()
         {
+            using telegraph::ModSource;
+            using telegraph::ModDestination;
+            using telegraph::NonModulatedParameter;
+            using telegraph::Size;
             addAndMakeVisible(headerPanel);
             addAndMakeVisible(modulePanel);
-            using telegraph::ModDestination;
-            using telegraph::Size;
-            for(size_t idx=0; idx<Size<ModDestination>(); idx++){
-                modulationAmountKnobs[ModDestination(idx)] = makeTelegraphModulationAmountKnob();
-                addAndMakeVisible(*modulationAmountKnobs[ModDestination(idx)]);
+
+            for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
+                for(size_t dest_idx=0; dest_idx<Size<ModDestination>(); dest_idx++){
+                    modulationAmountKnobs[ModSource(source_idx)][ModDestination(dest_idx)] = makeTelegraphModulationAmountKnob();
+                    addAndMakeVisible(*modulationAmountKnobs[ModSource(source_idx)][ModDestination(dest_idx)]);
+                }
             }
         }
         void paint (juce::Graphics& g) override
@@ -117,27 +129,29 @@ class TelegraphUIContentComponent : public juce::Component {
             for(size_t idx=0; idx<Size<ModDestination>(); idx++){
                 auto maybeComponent = getModulationDestinationComponent(ModDestination(idx));
                 if(maybeComponent){
-                    // ui.modulationAmountKnobs[ModDestination(idx)]->showAt(
-                    //     maybeComponent.value(),
-                    //     AttributedString("poop"),
-                    //     1000,
-                    //     false,
-                    //     false
-                    // );
-                    // juce::BubbleMessageComponent
+
                     auto targetKnob = maybeComponent.value();
               
                     if(currentEditMode==Mode::MODULATION_EDIT){
-                        
 
-                        modulationAmountKnobs[ModDestination(idx)]->setBounds(modulationAmountKnobs[ModDestination(idx)]->getParentComponent()->getLocalArea (targetKnob, targetKnob->getLocalBounds()));
-                        modulationAmountKnobs[ModDestination(idx)]->setVisible(true);
-                        modulationAmountKnobs[ModDestination(idx)]->toFront(false);
+                        for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
+                            modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->setVisible(false);
+                            modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->toBack();
+                            targetKnob->setComponentEffect (nullptr);
+                        }
+                        
+                        
+                        modulationAmountKnobs[currentModSource][ModDestination(idx)]->setBounds(modulationAmountKnobs[currentModSource][ModDestination(idx)]->getParentComponent()->getLocalArea (targetKnob, targetKnob->getLocalBounds()));
+                        modulationAmountKnobs[currentModSource][ModDestination(idx)]->setVisible(true);
+                        modulationAmountKnobs[currentModSource][ModDestination(idx)]->toFront(false);
                         targetKnob->setComponentEffect (&modulationGlow);
                     } else {
-                        modulationAmountKnobs[ModDestination(idx)]->setVisible(false);
-                        modulationAmountKnobs[ModDestination(idx)]->toBack();
-                        targetKnob->setComponentEffect (nullptr);
+                        for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
+                            modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->setVisible(false);
+                            modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->toBack();
+                            targetKnob->setComponentEffect (nullptr);
+                        }
+                        
                     }
                     
                 }
@@ -162,26 +176,26 @@ class TelegraphUIContentComponent : public juce::Component {
         //AMP PANEL
         std::unique_ptr<juce::Slider>& getLowpasCutoffKnob(){return modulePanel.topRow.ampPanel.lowpassCutoffKnob;}
         std::unique_ptr<juce::Slider>& getLowpassQKnob(){return modulePanel.topRow.ampPanel.lowpassQKnob;}
-        std::unique_ptr<juce::ArrowButton>& getAmpMapButton(){return modulePanel.topRow.ampPanel.ampMapBtn;}
+        std::unique_ptr<juce::TextButton>& getAmpMapButton(){return modulePanel.topRow.ampPanel.ampMapBtn;}
         std::unique_ptr<juce::Slider>& getAmpAttackKnob(){return modulePanel.topRow.ampPanel.ampAttackKnob;}
         std::unique_ptr<juce::Slider>& getAmpDecayKnob(){return modulePanel.topRow.ampPanel.ampDecayKnob;}
         std::unique_ptr<juce::Slider>& getAmpSustainKnob(){return modulePanel.topRow.ampPanel.ampSustainKnob;}
         std::unique_ptr<juce::Slider>& getAmpReleaseKnob(){return modulePanel.topRow.ampPanel.ampReleaseKnob;}
         std::unique_ptr<juce::Slider>& getMainGainKnob(){return modulePanel.topRow.ampPanel.finalGainKnob;}
         //MODULATION PANL
-        std::unique_ptr<juce::ArrowButton>& getModEnv1MapButton(){return modulePanel.bottomRow.modEnv1MapBtn;}
+        std::unique_ptr<juce::TextButton>& getModEnv1MapButton(){return modulePanel.bottomRow.modEnv1MapBtn;}
         std::unique_ptr<juce::Slider>& getModEnv1AttackKnob(){return modulePanel.bottomRow.modEnv1AttackKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1DecayKnob(){return modulePanel.bottomRow.modEnv1DecayKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1SustainKnob(){return modulePanel.bottomRow.modEnv1SustainKnob;}
         std::unique_ptr<juce::Slider>& getModEnv1ReleaseKnob(){return modulePanel.bottomRow.modEnv1ReleaseKnob;}
-        std::unique_ptr<juce::ArrowButton>& getModEnv2MapButton(){return modulePanel.bottomRow.modEnv2MapBtn;}
+        std::unique_ptr<juce::TextButton>& getModEnv2MapButton(){return modulePanel.bottomRow.modEnv2MapBtn;}
         std::unique_ptr<juce::Slider>& getModEnv2AttackKnob(){return modulePanel.bottomRow.modEnv2AttackKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2DecayKnob(){return modulePanel.bottomRow.modEnv2DecayKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2SustainKnob(){return modulePanel.bottomRow.modEnv2SustainKnob;}
         std::unique_ptr<juce::Slider>& getModEnv2ReleaseKnob(){return modulePanel.bottomRow.modEnv2ReleaseKnob;}
-        std::unique_ptr<juce::ArrowButton>& getModLFO1MapButton(){return modulePanel.bottomRow.modLFO1MapBtn;}
+        std::unique_ptr<juce::TextButton>& getModLFO1MapButton(){return modulePanel.bottomRow.modLFO1MapBtn;}
         std::unique_ptr<juce::Slider>& getModLFO1SpeedKnob(){return modulePanel.bottomRow.modLFO1SpeedKnob;}
-        std::unique_ptr<juce::ArrowButton>& getModLFO2MapButton(){return modulePanel.bottomRow.modLFO2MapBtn;}
+        std::unique_ptr<juce::TextButton>& getModLFO2MapButton(){return modulePanel.bottomRow.modLFO2MapBtn;}
         std::unique_ptr<juce::Slider>& getModLFO2SpeedKnob(){return modulePanel.bottomRow.modLFO2SpeedKnob;}
 
         const std::optional<juce::Component*> getModulationDestinationComponent(ModDestination paramId){
@@ -242,8 +256,9 @@ class TelegraphUIContentComponent : public juce::Component {
             }
             
         }
-        std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>> modulationAmountKnobs = std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>();
+        std::map<telegraph::ModSource, std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>> modulationAmountKnobs = std::map<telegraph::ModSource,std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>>();
         Mode currentEditMode=Mode::SYNTH_EDIT; 
+        telegraph::ModSource currentModSource;
         GlowEffect modulationGlow = GlowEffect();
         
     private:
@@ -449,7 +464,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     ,lowpassCutoffLabel(std::move(makeTelegraphKnobLabel(lowpassCutoffKnob.get(),ModDestination::LOWPASS_CUTOFF)))
                     ,lowpassQKnob(std::move(makeTelegraphKnob()))
                     ,lowpassQLabel(std::move(makeTelegraphKnobLabel(lowpassQKnob.get(),ModDestination::LOWPASS_Q)))
-                    ,ampMapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
+                    ,ampMapBtn(std::move(makeTelegraphModMapButton()))
                     ,ampMapLabel(std::move(makeKnobLabel(ampMapBtn.get(),"Amp Env:")))
                     ,ampAttackKnob(std::move(makeTelegraphKnob()))
                     ,ampAttackLabel(std::move(makeTelegraphKnobLabel(ampAttackKnob.get(),NonModulatedParameter::AMP_ATTACK)))
@@ -501,7 +516,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     std::unique_ptr<juce::Label>      lowpassCutoffLabel;
                     std::unique_ptr<juce::Slider>     lowpassQKnob;
                     std::unique_ptr<juce::Label>      lowpassQLabel;
-                    std::unique_ptr<juce::ArrowButton> ampMapBtn;
+                    std::unique_ptr<juce::TextButton> ampMapBtn;
                     std::unique_ptr<juce::Label>      ampMapLabel;
                     std::unique_ptr<juce::Slider>     ampAttackKnob;
                     std::unique_ptr<juce::Label>      ampAttackLabel;
@@ -521,7 +536,7 @@ class TelegraphUIContentComponent : public juce::Component {
             TopRow topRow;
             struct BottomRow: public juce::Component{
                 BottomRow()
-                :modEnv1MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
+                :modEnv1MapBtn(std::move(makeTelegraphModMapButton()))
                 ,modEnv1MapLabel(std::move(makeKnobLabel(modEnv1MapBtn.get(),"Env 1:")))
                 ,modEnv1AttackKnob(std::move(makeTelegraphKnob()))
                 ,modEnv1AttackLabel(std::move(makeTelegraphKnobLabel(modEnv1AttackKnob.get(), NonModulatedParameter::ENV_ONE_ATTACK)))
@@ -531,7 +546,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 ,modEnv1SustainLabel(std::move(makeTelegraphKnobLabel(modEnv1SustainKnob.get(), NonModulatedParameter::ENV_ONE_SUSTAIN)))
                 ,modEnv1ReleaseKnob(std::move(makeTelegraphKnob()))
                 ,modEnv1ReleaseLabel(std::move(makeTelegraphKnobLabel(modEnv1ReleaseKnob.get(), NonModulatedParameter::ENV_ONE_RELEASE)))
-                ,modEnv2MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
+                ,modEnv2MapBtn(std::move(makeTelegraphModMapButton()))
                 ,modEnv2MapLabel(std::move(makeKnobLabel(modEnv2MapBtn.get(),"Env 2:")))
                 ,modEnv2AttackKnob(std::move(makeTelegraphKnob()))
                 ,modEnv2AttackLabel(std::move(makeTelegraphKnobLabel(modEnv2AttackKnob.get(), NonModulatedParameter::ENV_TWO_ATTACK)))
@@ -541,11 +556,11 @@ class TelegraphUIContentComponent : public juce::Component {
                 ,modEnv2SustainLabel(std::move(makeTelegraphKnobLabel(modEnv2SustainKnob.get(), NonModulatedParameter::ENV_TWO_SUSTAIN)))
                 ,modEnv2ReleaseKnob(std::move(makeTelegraphKnob()))
                 ,modEnv2ReleaseLabel(std::move(makeTelegraphKnobLabel(modEnv2ReleaseKnob.get(), NonModulatedParameter::ENV_TWO_RELEASE)))
-                ,modLFO1MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
+                ,modLFO1MapBtn(std::move(makeTelegraphModMapButton()))
                 ,modLFO1MapLabel(std::move(makeKnobLabel(modLFO1MapBtn.get(),"LFO 1:")))
                 ,modLFO1SpeedKnob(std::move(makeTelegraphKnob()))
                 ,modLFO1SpeedLabel(std::move(makeTelegraphKnobLabel(modLFO1SpeedKnob.get(), ModDestination::LFO_ONE_SPEED)))
-                ,modLFO2MapBtn(std::make_unique<juce::ArrowButton>("",0.5,juce::Colours::black))
+                ,modLFO2MapBtn(std::move(makeTelegraphModMapButton()))
                 ,modLFO2MapLabel(std::move(makeKnobLabel(modLFO2MapBtn.get(),"LFO 2:")))
                 ,modLFO2SpeedKnob(std::move(makeTelegraphKnob()))
                 ,modLFO2SpeedLabel(std::move(makeTelegraphKnobLabel(modLFO2SpeedKnob.get(), ModDestination::LFO_TWO_SPEED)))
@@ -604,7 +619,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 {
                     g.fillAll (juce::Colours::transparentBlack);
                 }
-                std::unique_ptr<juce::ArrowButton> modEnv1MapBtn;
+                std::unique_ptr<juce::TextButton> modEnv1MapBtn;
                 std::unique_ptr<juce::Label>      modEnv1MapLabel;
                 std::unique_ptr<juce::Slider>     modEnv1AttackKnob;
                 std::unique_ptr<juce::Label>      modEnv1AttackLabel;
@@ -614,7 +629,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 std::unique_ptr<juce::Label>      modEnv1SustainLabel;
                 std::unique_ptr<juce::Slider>     modEnv1ReleaseKnob;
                 std::unique_ptr<juce::Label>      modEnv1ReleaseLabel;
-                std::unique_ptr<juce::ArrowButton> modEnv2MapBtn;
+                std::unique_ptr<juce::TextButton> modEnv2MapBtn;
                 std::unique_ptr<juce::Label>      modEnv2MapLabel;
                 std::unique_ptr<juce::Slider>     modEnv2AttackKnob;
                 std::unique_ptr<juce::Label>      modEnv2AttackLabel;
@@ -624,11 +639,11 @@ class TelegraphUIContentComponent : public juce::Component {
                 std::unique_ptr<juce::Label>      modEnv2SustainLabel;
                 std::unique_ptr<juce::Slider>     modEnv2ReleaseKnob;
                 std::unique_ptr<juce::Label>      modEnv2ReleaseLabel;
-                std::unique_ptr<juce::ArrowButton> modLFO1MapBtn;
+                std::unique_ptr<juce::TextButton> modLFO1MapBtn;
                 std::unique_ptr<juce::Label>      modLFO1MapLabel;
                 std::unique_ptr<juce::Slider>     modLFO1SpeedKnob;
                 std::unique_ptr<juce::Label>      modLFO1SpeedLabel;
-                std::unique_ptr<juce::ArrowButton> modLFO2MapBtn;
+                std::unique_ptr<juce::TextButton> modLFO2MapBtn;
                 std::unique_ptr<juce::Label>      modLFO2MapLabel;
                 std::unique_ptr<juce::Slider>     modLFO2SpeedKnob;
                 std::unique_ptr<juce::Label>      modLFO2SpeedLabel;

@@ -17,16 +17,16 @@ using telegraph::NonModulatedParameter;
 
 //==============================================================================
 TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProcessor& p, juce::AudioProcessorValueTreeState& t)
-    : AudioProcessorEditor (&p), audioProcessor (p), stateTree(t), modulationButtonListener(ModMapButtonListener(ui))
+    : AudioProcessorEditor (&p), audioProcessor (p), stateTree(t), modulationButtonListener(ModMapButtonListener(ui,t,modulationMatrixKnobs))
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     using telegraph::ModSource;
-    modulationButtonListener.attach(ModSource::AMP_ENV,*ui.getAmpMapButton());
-    modulationButtonListener.attach(ModSource::ENV_ONE,*ui.getModEnv1MapButton());
-    modulationButtonListener.attach(ModSource::ENV_TWO,*ui.getModEnv2MapButton());
-    modulationButtonListener.attach(ModSource::LFO_ONE,*ui.getModLFO1MapButton());
-    modulationButtonListener.attach(ModSource::LFO_TWO,*ui.getModLFO2MapButton());
+    modulationButtonListener.attach(ModSource::AMP_ENV,ui.getAmpMapButton().get());
+    modulationButtonListener.attach(ModSource::ENV_ONE,ui.getModEnv1MapButton().get());
+    modulationButtonListener.attach(ModSource::ENV_TWO,ui.getModEnv2MapButton().get());
+    modulationButtonListener.attach(ModSource::LFO_ONE,ui.getModLFO1MapButton().get());
+    modulationButtonListener.attach(ModSource::LFO_TWO,ui.getModLFO2MapButton().get());
     exciterTypeAttachment.reset (
       new ComboBoxAttachment (
         stateTree, 
@@ -170,13 +170,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getMainGainKnob()
       )
     );
-    // modEnv1MapButton.reset (
-    //   new SliderAttachment (
-    //     stateTree, 
-    //     TokenName<ModDestination>(ModDestination::GAIN), 
-    //     *ui.getMainGainKnob()
-    //   )
-    // );
+
     modEnv1AttackKnob.reset (
       new SliderAttachment (
         stateTree, 
@@ -205,13 +199,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getModEnv1ReleaseKnob()
       )
     );
-    // modEnv2MapButton.reset (
-    //   new SliderAttachment (
-    //     stateTree, 
-    //     TokenName<ModDestination>(ModDestination::GAIN), 
-    //     *ui.getMainGainKnob()
-    //   )
-    // );
+
     modEnv2AttackKnob.reset (
       new SliderAttachment (
         stateTree, 
@@ -240,13 +228,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getModEnv2ReleaseKnob()
       )
     );
-    // modLFO1MapButton.reset (
-    //   new SliderAttachment (
-    //     stateTree, 
-    //     TokenName<ModDestination>(ModDestination::GAIN), 
-    //     *ui.getMainGainKnob()
-    //   )
-    // );
+
     modLFO1SpeedKnob.reset (
       new SliderAttachment (
         stateTree, 
@@ -254,13 +236,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getModLFO1SpeedKnob()
       )
     );
-    // modLFO2MapButton.reset (
-    //   new SliderAttachment (
-    //     stateTree, 
-    //     TokenName<ModDestination>(ModDestination::LFO_ONE_SPEED), 
-    //     *ui.getModLFO1SpeedKnob()
-    //   )
-    // );
+
     modLFO2SpeedKnob.reset (
       new SliderAttachment (
         stateTree, 
@@ -268,11 +244,34 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
         *ui.getModLFO2SpeedKnob()
       )
     );
+
+    using telegraph::ModSource;
+    using telegraph::ModDestination;
+    using telegraph::Size;
+    for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
+      for(size_t dest_idx=0; dest_idx<Size<ModDestination>(); dest_idx++){
+
+        
+        std::string parameter_id = TokenName<ModSource>(ModSource(source_idx)) 
+            + "_to_" 
+            + telegraph::TokenName<ModDestination>(ModDestination(dest_idx));
+
+        modulationMatrixKnobs[ModSource(source_idx)][ModDestination(dest_idx)].reset(
+            new SliderAttachment (
+                stateTree, 
+                parameter_id, 
+                *ui.modulationAmountKnobs[ModSource(source_idx)][ModDestination(dest_idx)]
+            )
+        );
+
+      }
+    }
   
     addAndMakeVisible(ui);
 
     setSize (1000, 900);
-    // setSize (paramSliderWidth + paramLabelWidth, juce::jmax (100, paramControlHeight * 2));
+
+
 }
 
 TelegraphAudioProcessorEditor::~TelegraphAudioProcessorEditor()
