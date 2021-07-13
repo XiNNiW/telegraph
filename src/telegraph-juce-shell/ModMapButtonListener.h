@@ -4,7 +4,7 @@
 #include "telegraph_core.h"
 
 
-class ModMapButtonListener : public juce::Button::Listener {
+class ModMapButtonListener : public juce::Button::Listener, public juce::KeyListener {
     public:
         typedef juce::AudioProcessorValueTreeState::SliderAttachment SliderAttachment;
         ModMapButtonListener(
@@ -15,7 +15,9 @@ class ModMapButtonListener : public juce::Button::Listener {
         :ui(uiComponent)
         ,stateTree(stateValueTree)
         ,modKnobAttachments(knobAttachments)
-        {}
+        {
+            ui.addKeyListener(this);
+        }
         void attach(telegraph::ModSource source, juce::Button* b){
             modButtons[source] = b;
             b->addListener(this);
@@ -55,6 +57,19 @@ class ModMapButtonListener : public juce::Button::Listener {
             
             
 
+        }
+
+        bool keyPressed ( 	
+            const juce::KeyPress&  	key,
+		    juce::Component*  	originatingComponent 
+	    ) override {
+            if(ui.currentEditMode==TelegraphUIContentComponent::Mode::MODULATION_EDIT && key.getKeyCode() == key.escapeKey ){
+                ui.currentEditMode = TelegraphUIContentComponent::Mode::SYNTH_EDIT;
+                ui.resized();
+                return true;
+            } else {
+                return false;
+            }
         }
 
     private:
