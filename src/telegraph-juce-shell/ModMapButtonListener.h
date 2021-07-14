@@ -41,7 +41,6 @@ class ModMapButtonListener : public juce::Button::Listener, public juce::KeyList
 
             if(buttonFound){
 
-
                 bool shouldResetSynthEditMode = ui.currentEditMode == TelegraphUIContentComponent::Mode::MODULATION_EDIT 
                                                 && previousSource.has_value() 
                                                 && source == previousSource.value();

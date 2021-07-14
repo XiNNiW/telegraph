@@ -79,6 +79,39 @@ static void positionKnobOnPanelGrid(
                     
 }
 
+struct PresetSaveModalComponent: public juce::Component {
+    PresetSaveModalComponent()
+    :presetNameTextBox(std::make_unique<juce::Label>())
+    ,cancelButton(std::make_unique<juce::TextButton>("Cancel"))
+    ,saveButton(std::make_unique<juce::TextButton>("Save"))
+    {
+        presetNameTextBox->setEditable(true, false, false);
+        presetNameTextBox->setColour(juce::Label::backgroundColourId, juce::Colours::darkslateblue);
+        addAndMakeVisible(*presetNameTextBox);
+        addAndMakeVisible(*cancelButton);
+        addAndMakeVisible(*saveButton);
+    }
+    void resized() override {
+        auto bounds = getLocalBounds();
+        auto dialogWidth = bounds.getWidth();
+        auto dialogHeight = bounds.getHeight();
+        auto topInset = bounds.getHeight()/16;
+        auto elementHeight = dialogHeight/2;
+        auto editBoxBounds = bounds.removeFromTop(elementHeight+topInset).withSizeKeepingCentre( dialogWidth*0.9, elementHeight*0.9);
+        presetNameTextBox->setBounds(editBoxBounds);
+        auto buttonWidth = bounds.getWidth()/2;
+        cancelButton->setBounds(bounds.removeFromRight(buttonWidth).withSizeKeepingCentre( buttonWidth*0.8, elementHeight*0.9));
+        saveButton->setBounds(bounds.withSizeKeepingCentre(buttonWidth*0.8, elementHeight*0.9));
+    }
+    void paint (juce::Graphics& g) override
+    {
+        g.fillAll (juce::Colours::darkgrey);
+    }
+    std::unique_ptr<juce::Label>  presetNameTextBox;
+    std::unique_ptr<juce::Button> cancelButton;
+    std::unique_ptr<juce::Button> saveButton;
+};
+
 class TelegraphUIContentComponent : public juce::Component {
     
     public:
@@ -93,9 +126,8 @@ class TelegraphUIContentComponent : public juce::Component {
             MODULATION_EDIT
         };
         TelegraphUIContentComponent()
-        : 
-          headerPanel(),
-          modulePanel()
+        :headerPanel()
+        ,modulePanel()
         {
             using telegraph::ModSource;
             using telegraph::ModDestination;
@@ -197,7 +229,8 @@ class TelegraphUIContentComponent : public juce::Component {
         std::unique_ptr<juce::Slider>& getModLFO1SpeedKnob(){return modulePanel.bottomRow.modLFO1SpeedKnob;}
         std::unique_ptr<juce::TextButton>& getModLFO2MapButton(){return modulePanel.bottomRow.modLFO2MapBtn;}
         std::unique_ptr<juce::Slider>& getModLFO2SpeedKnob(){return modulePanel.bottomRow.modLFO2SpeedKnob;}
-
+        std::unique_ptr<juce::TextButton>& getPresetDisplay(){return headerPanel.presetDisplay;}
+        std::unique_ptr<juce::TextButton>& getPresetSaveButton(){return headerPanel.presetSaveButton;}
         const std::optional<juce::Component*> getModulationDestinationComponent(ModDestination paramId){
             switch (paramId)
             {
@@ -256,6 +289,7 @@ class TelegraphUIContentComponent : public juce::Component {
             }
             
         }
+
         std::map<telegraph::ModSource, std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>> modulationAmountKnobs = std::map<telegraph::ModSource,std::map<telegraph::ModDestination, std::unique_ptr<juce::Slider>>>();
         Mode currentEditMode=Mode::SYNTH_EDIT; 
         telegraph::ModSource currentModSource;
@@ -263,12 +297,42 @@ class TelegraphUIContentComponent : public juce::Component {
         
     private:
         struct HeaderPanel: public juce::Component{
-            HeaderPanel():backgroundColour(juce::Colours::transparentBlack){}
+            HeaderPanel()
+            :pluginTitle(juce::Label())
+            ,presetDisplay(std::make_unique<juce::TextButton>("Init"))
+            ,presetSaveButton(std::make_unique<juce::TextButton>("save"))
+            {
+                pluginTitle.setText("Telegraph", juce::dontSendNotification);
+                pluginTitle.setFont(juce::Font (32.0f, juce::Font::bold));
+                addAndMakeVisible(pluginTitle);
+
+                presetDisplay->setName("Init");
+                presetDisplay->setColour(juce::TextButton::buttonColourId, juce::Colours::darkslateblue);
+                presetDisplay->setColour(juce::TextButton::buttonOnColourId, juce::Colours::darkslateblue);
+                presetDisplay->setColour(juce::TextButton::textColourOffId, juce::Colours::cyan);
+                presetDisplay->setColour(juce::TextButton::textColourOnId, juce::Colours::cyan);
+                addAndMakeVisible(*presetDisplay);
+
+                addAndMakeVisible(*presetSaveButton);
+            }
             void paint (juce::Graphics& g) override
             {
                 g.fillAll (backgroundColour);
             }
-            juce::Colour backgroundColour;
+            void resized() override {
+                auto bounds = getLocalBounds();
+                auto titleWidth = bounds.getWidth()/3;
+                auto titleBounds = bounds.removeFromLeft(titleWidth);
+                pluginTitle.setBounds(titleBounds);
+
+                presetDisplay->setBounds(bounds.removeFromLeft(titleWidth).withSizeKeepingCentre(titleWidth*0.8, bounds.getHeight()*0.75));
+                auto buttonBounds = bounds.removeFromRight(bounds.getWidth()/4);
+                presetSaveButton->setBounds(buttonBounds.withSizeKeepingCentre(buttonBounds.getWidth()*0.7, buttonBounds.getHeight()*0.7));
+            }
+            juce::Label pluginTitle;
+            std::unique_ptr<juce::TextButton> presetDisplay;
+            std::unique_ptr<juce::TextButton> presetSaveButton;
+            juce::Colour backgroundColour=juce::Colours::transparentBlack;
         };
         HeaderPanel headerPanel;
         struct ModulePanel: public juce::Component{
@@ -617,7 +681,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     }
                 void paint (juce::Graphics& g) override
                 {
-                    g.fillAll (juce::Colours::transparentBlack);
+                    g.fillAll (juce::Colour(0xff444444 ));
                 }
                 std::unique_ptr<juce::TextButton> modEnv1MapBtn;
                 std::unique_ptr<juce::Label>      modEnv1MapLabel;

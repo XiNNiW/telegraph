@@ -12,6 +12,9 @@
 #include "PluginProcessor.h"
 #include "TelegraphUIContentComponent.h"
 #include "ModMapButtonListener.h"
+#include "PresetDisplayButtonListener.h"
+#include "PresetFileManager.h"
+#include "PresetSaveAsModalLauncher.h"
 
 //==============================================================================
 /**
@@ -76,6 +79,9 @@ private:
     std::map<telegraph::ModSource,std::map<telegraph::ModDestination,std::unique_ptr<SliderAttachment>>> modulationMatrixKnobs;
 
     ModMapButtonListener modulationButtonListener;
+    PresetFileManager presetFileManager;
+    PresetDisplayButtonListener presetButtonListener;
+    PresetSaveAsModalLauncher presetSaveAsModalLauncher;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessorEditor)

@@ -17,7 +17,13 @@ using telegraph::NonModulatedParameter;
 
 //==============================================================================
 TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProcessor& p, juce::AudioProcessorValueTreeState& t)
-    : AudioProcessorEditor (&p), audioProcessor (p), stateTree(t), modulationButtonListener(ModMapButtonListener(ui,t,modulationMatrixKnobs))
+    : AudioProcessorEditor (&p)
+    , audioProcessor (p)
+    , stateTree(t)
+    , modulationButtonListener(ModMapButtonListener(ui, t, modulationMatrixKnobs))
+    , presetFileManager(PresetFileManager(p))
+    , presetButtonListener(PresetDisplayButtonListener(ui, presetFileManager))
+    , presetSaveAsModalLauncher(ui, presetFileManager)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
