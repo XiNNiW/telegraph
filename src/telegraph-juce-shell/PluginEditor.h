@@ -15,6 +15,7 @@
 #include "PresetDisplayButtonListener.h"
 #include "PresetFileManager.h"
 #include "PresetSaveAsModalLauncher.h"
+#include "TelegraphLogger.h"
 
 //==============================================================================
 /**
@@ -79,9 +80,9 @@ private:
     std::map<telegraph::ModSource,std::map<telegraph::ModDestination,std::unique_ptr<SliderAttachment>>> modulationMatrixKnobs;
 
     ModMapButtonListener modulationButtonListener;
-    PresetFileManager presetFileManager;
     PresetDisplayButtonListener presetButtonListener;
     PresetSaveAsModalLauncher presetSaveAsModalLauncher;
+    TelegraphLogger& logger = TelegraphLogger::Instance();
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TelegraphAudioProcessorEditor)

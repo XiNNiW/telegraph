@@ -1,35 +1,20 @@
 #pragma once
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
+#include "SystemConstants.h"
 
-static const juce::String PROJECT_DIR_PATH = juce::String( 
-            juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getFullPathName()
-            + juce::File::getSeparatorString() 
-            + ProjectInfo::projectName 
-        );
-static const juce::String PRESET_DIR_PATH  = juce::String(PROJECT_DIR_PATH + juce::File::getSeparatorString() + "Presets");
-static const juce::String PRESET_FILE_EXT = juce::String(".telegraph_preset");
 class PresetFileManager {
     public:
-        PresetFileManager(TelegraphAudioProcessor& proc)
-        : processor(proc)
-        {
-            if (!juce::File (PROJECT_DIR_PATH).exists())
-            {
-                juce::File (PROJECT_DIR_PATH).createDirectory();
-            }
-
-            if (!juce::File (PRESET_DIR_PATH).exists())
-            {
-                juce::File (PRESET_DIR_PATH).createDirectory();
-            }
-    
-            populatePresetList();
+        static PresetFileManager& Instance(){
+            static PresetFileManager instance;
+            
+            return instance;
         }
+        
         const size_t getNumPresets(){
             return presetList.size();
         }
-        void loadPreset(const size_t& presetNumber){
+        void loadPreset(const size_t& presetNumber, TelegraphAudioProcessor& processor){
             auto presetFile = presetList[presetNumber];
 
             juce::MemoryBlock presetBinary;
@@ -37,10 +22,12 @@ class PresetFileManager {
             if (presetFile.loadFileAsData (presetBinary))
             {
                 processor.setStateInformation (presetBinary.getData(), (int) presetBinary.getSize());
-                currentPreset = &presetFile;
+                currentPresetName = std::make_optional(presetFile.getFileNameWithoutExtension());
+                currentPresetIndex = std::make_optional(presetNumber);
+
             }
         }
-        void saveCurrentPreset(juce::String name){
+        void saveCurrentPreset(juce::String name, TelegraphAudioProcessor& processor){
             File presetFile = File (PRESET_DIR_PATH + juce::File::getSeparatorString() + name + PRESET_FILE_EXT);
     
             if (!presetFile.exists())
@@ -59,18 +46,41 @@ class PresetFileManager {
 
             presetList.clear();
             populatePresetList();
+            currentPresetIndex = std::make_optional(presetList.indexOf(presetFile));
+            currentPresetName = std::make_optional(name);
             
         }
 
-        const juce::String getPresetName(const size_t& presetNumber){
-            return presetList[presetNumber].getFileNameWithoutExtension();
+        const std::optional<juce::String> getPresetName(const size_t& presetNumber){
+            return presetNumber<presetList.size()
+                    ?std::make_optional(presetList[presetNumber].getFileNameWithoutExtension())
+                    :std::nullopt;
         }
 
         const juce::String getCurrentPresetName(){
-            return currentPreset.has_value()?currentPreset.value()->getFileNameWithoutExtension():"Init Patch";
+            return currentPresetName.has_value()?currentPresetName.value():"Init Patch";
         }
 
+        PresetFileManager(PresetFileManager const&)=delete;              
+        void operator=(PresetFileManager const&)=delete; 
+
     private:
+        
+        PresetFileManager()
+        {
+            if (!juce::File (PROJECT_DIR_PATH).exists())
+            {
+                juce::File (PROJECT_DIR_PATH).createDirectory();
+            }
+
+            if (!juce::File (PRESET_DIR_PATH).exists())
+            {
+                juce::File (PRESET_DIR_PATH).createDirectory();
+            }
+            populatePresetList();
+
+        }
+        
         void populatePresetList(){
             auto presetFileSearchWildCard = "*" + PRESET_FILE_EXT;
             for (
@@ -81,6 +91,6 @@ class PresetFileManager {
             }
         }
         juce::Array<File> presetList;
-        std::optional<File*> currentPreset = std::nullopt;
-        TelegraphAudioProcessor& processor;
+        std::optional<size_t> currentPresetIndex = std::nullopt;
+        std::optional<juce::String> currentPresetName = std::nullopt;
 };

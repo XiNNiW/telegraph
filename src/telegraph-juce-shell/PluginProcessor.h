@@ -15,6 +15,7 @@
 /**
 */
 
+
 constexpr size_t NUMBER_OF_VOICES = 16;
 constexpr size_t MAX_UNISON = 16;
 constexpr size_t WAVE_TABLE_SIZE = 1024;
@@ -58,6 +59,9 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    juce::AudioProcessorValueTreeState& getStateTree(){
+      return parameters;
+    }
 
 private:
     void updateSynthParams();

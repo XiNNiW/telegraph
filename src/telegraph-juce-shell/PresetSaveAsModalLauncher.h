@@ -4,47 +4,40 @@
 
 class PresetSaveAsModalLauncher : public juce::Button::Listener {
     public:
-        PresetSaveAsModalLauncher(TelegraphUIContentComponent& uiComp, PresetFileManager& presetFileManager)
+        PresetSaveAsModalLauncher(TelegraphUIContentComponent& uiComp, TelegraphAudioProcessor& proc)
         :ui(uiComp)
-        ,presetManager(presetFileManager)
-        ,modalComponent(std::make_unique<PresetSaveModalComponent>())
-        ,launchOptions(juce::DialogWindow::LaunchOptions())
+        ,processor(proc)
         {
-            launchOptions.dialogTitle = "Save Preset";
-            launchOptions.componentToCentreAround = &ui;
-            launchOptions.content = OptionalScopedPointer<Component>(modalComponent.get(),false);
-            launchOptions.resizable = false;
-
             ui.getPresetSaveButton()->addListener(this);
-            modalComponent->saveButton->addListener(this);
-            modalComponent->cancelButton->addListener(this);
+            ui.getPresetSaveDialog().saveButton->addListener(this);
+            ui.getPresetSaveDialog().cancelButton->addListener(this);
         }
         void buttonClicked(Button* button) override {
 
             if(button == ui.getPresetSaveButton().get()){
-                modalComponent->setBounds(
-                    ui.getBounds().withSizeKeepingCentre(ui.getBounds().getWidth()/2,ui.getBounds().getWidth()/8)
+                ui.getPresetSaveDialog().setBounds(
+                    ui.getBounds().withSizeKeepingCentre(ui.getBounds().getWidth()/2,ui.getBounds().getWidth()/6)
                 );
-                modalComponent->presetNameTextBox->setText(presetManager.getCurrentPresetName(), juce::dontSendNotification);
-                dialog = std::make_optional(launchOptions.launchAsync());
+                ui.getPresetSaveDialog().presetNameTextBox->setText(PresetFileManager::Instance().getCurrentPresetName(), juce::dontSendNotification);
+                ui.showPresetSaveDialog();
+                ui.resized();
             }
-            else if (button == modalComponent->cancelButton.get()) {
-                if(dialog.has_value()) dialog.value()->exitModalState(1234);
+            else if (button == ui.getPresetSaveDialog().cancelButton.get()) {
+                ui.hidePresetSaveDialog();
+                ui.resized();
             }
-            else if( button == modalComponent->saveButton.get()) {
-                if(dialog.has_value()) {
-                    presetManager.saveCurrentPreset(modalComponent->presetNameTextBox->getText());
-                    ui.getPresetDisplay()->setName(presetManager.getCurrentPresetName());
-                    dialog.value()->exitModalState(1234);
-                }
+            else if( button == ui.getPresetSaveDialog().saveButton.get()) {
+                auto presetName = ui.getPresetSaveDialog().presetNameTextBox->getText();
+                PresetFileManager::Instance().saveCurrentPreset(presetName, processor);
+                ui.getPresetDisplay()->setButtonText(presetName);
+                ui.hidePresetSaveDialog();
+                ui.resized();
             }
                 
             
         }
     private:
         TelegraphUIContentComponent& ui;
-        PresetFileManager& presetManager;
-        std::unique_ptr<PresetSaveModalComponent> modalComponent; 
-        std::optional<juce::DialogWindow*> dialog = std::nullopt;
-        juce::DialogWindow::LaunchOptions launchOptions;
+        TelegraphAudioProcessor& processor;
+
 };

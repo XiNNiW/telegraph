@@ -21,9 +21,8 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
     , audioProcessor (p)
     , stateTree(t)
     , modulationButtonListener(ModMapButtonListener(ui, t, modulationMatrixKnobs))
-    , presetFileManager(PresetFileManager(p))
-    , presetButtonListener(PresetDisplayButtonListener(ui, presetFileManager))
-    , presetSaveAsModalLauncher(ui, presetFileManager)
+    , presetButtonListener(PresetDisplayButtonListener(ui, p))
+    , presetSaveAsModalLauncher(ui, p)
 {
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.

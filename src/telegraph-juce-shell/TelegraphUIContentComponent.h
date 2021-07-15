@@ -81,18 +81,23 @@ static void positionKnobOnPanelGrid(
 
 struct PresetSaveModalComponent: public juce::Component {
     PresetSaveModalComponent()
-    :presetNameTextBox(std::make_unique<juce::Label>())
+    :dialogTitle(juce::Label())
+    ,presetNameTextBox(std::make_unique<juce::Label>())
     ,cancelButton(std::make_unique<juce::TextButton>("Cancel"))
     ,saveButton(std::make_unique<juce::TextButton>("Save"))
     {
         presetNameTextBox->setEditable(true, false, false);
         presetNameTextBox->setColour(juce::Label::backgroundColourId, juce::Colours::darkslateblue);
+        dialogTitle.setText("Save As Preset?",juce::dontSendNotification);
+        dialogTitle.setColour(juce::Label::backgroundColourId, juce::Colours::black);
+        addAndMakeVisible(dialogTitle);
         addAndMakeVisible(*presetNameTextBox);
         addAndMakeVisible(*cancelButton);
         addAndMakeVisible(*saveButton);
     }
     void resized() override {
         auto bounds = getLocalBounds();
+        dialogTitle.setBounds(bounds.removeFromTop(bounds.getHeight()/6));
         auto dialogWidth = bounds.getWidth();
         auto dialogHeight = bounds.getHeight();
         auto topInset = bounds.getHeight()/16;
@@ -100,13 +105,14 @@ struct PresetSaveModalComponent: public juce::Component {
         auto editBoxBounds = bounds.removeFromTop(elementHeight+topInset).withSizeKeepingCentre( dialogWidth*0.9, elementHeight*0.9);
         presetNameTextBox->setBounds(editBoxBounds);
         auto buttonWidth = bounds.getWidth()/2;
-        cancelButton->setBounds(bounds.removeFromRight(buttonWidth).withSizeKeepingCentre( buttonWidth*0.8, elementHeight*0.9));
-        saveButton->setBounds(bounds.withSizeKeepingCentre(buttonWidth*0.8, elementHeight*0.9));
+        cancelButton->setBounds(bounds.removeFromRight(buttonWidth).withSizeKeepingCentre( buttonWidth*0.8, elementHeight*0.8));
+        saveButton->setBounds(bounds.withSizeKeepingCentre(buttonWidth*0.8, elementHeight*0.8));
     }
     void paint (juce::Graphics& g) override
     {
         g.fillAll (juce::Colours::darkgrey);
     }
+    juce::Label dialogTitle;
     std::unique_ptr<juce::Label>  presetNameTextBox;
     std::unique_ptr<juce::Button> cancelButton;
     std::unique_ptr<juce::Button> saveButton;
@@ -123,10 +129,13 @@ class TelegraphUIContentComponent : public juce::Component {
         };
         enum class Mode {
             SYNTH_EDIT,
-            MODULATION_EDIT
+            MODULATION_EDIT,
+            // PRESET_SAVE
         };
         TelegraphUIContentComponent()
-        :headerPanel()
+        :presetSaveDialog()
+        ,overlayPanel()
+        ,headerPanel()
         ,modulePanel()
         {
             using telegraph::ModSource;
@@ -135,6 +144,10 @@ class TelegraphUIContentComponent : public juce::Component {
             using telegraph::Size;
             addAndMakeVisible(headerPanel);
             addAndMakeVisible(modulePanel);
+            addAndMakeVisible(overlayPanel);
+            addAndMakeVisible(presetSaveDialog);
+            overlayPanel.setVisible(false);
+            presetSaveDialog.setVisible(false);
 
             for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
                 for(size_t dest_idx=0; dest_idx<Size<ModDestination>(); dest_idx++){
@@ -153,11 +166,13 @@ class TelegraphUIContentComponent : public juce::Component {
             using telegraph::ModDestination;
             using telegraph::ModSource;
             auto bounds = getLocalBounds();
+            overlayPanel.setBounds(bounds);
 
             auto height = bounds.getHeight();
 
             headerPanel.setBounds  (bounds.removeFromTop  (height/16));
             modulePanel.setBounds  (bounds.removeFromTop  (15*height/16));
+            
             for(size_t idx=0; idx<Size<ModDestination>(); idx++){
                 auto maybeComponent = getModulationDestinationComponent(ModDestination(idx));
                 if(maybeComponent){
@@ -177,7 +192,8 @@ class TelegraphUIContentComponent : public juce::Component {
                         modulationAmountKnobs[currentModSource][ModDestination(idx)]->setVisible(true);
                         modulationAmountKnobs[currentModSource][ModDestination(idx)]->toFront(false);
                         targetKnob->setComponentEffect (&modulationGlow);
-                    } else {
+                    }
+                    else {
                         for(size_t source_idx=0; source_idx<Size<ModSource>(); source_idx++){
                             modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->setVisible(false);
                             modulationAmountKnobs[ModSource(source_idx)][ModDestination(idx)]->toBack();
@@ -231,6 +247,26 @@ class TelegraphUIContentComponent : public juce::Component {
         std::unique_ptr<juce::Slider>& getModLFO2SpeedKnob(){return modulePanel.bottomRow.modLFO2SpeedKnob;}
         std::unique_ptr<juce::TextButton>& getPresetDisplay(){return headerPanel.presetDisplay;}
         std::unique_ptr<juce::TextButton>& getPresetSaveButton(){return headerPanel.presetSaveButton;}
+        PresetSaveModalComponent& getPresetSaveDialog(){
+            return presetSaveDialog;
+        }
+        void showModalOverlay(){
+            overlayPanel.setVisible(true);
+            overlayPanel.toFront(false);
+        }
+        void hideModalOverlay(){
+            overlayPanel.setVisible(false);
+        }
+        void showPresetSaveDialog(){
+            showModalOverlay();
+            presetSaveDialog.setVisible(true);
+            presetSaveDialog.toFront(true);
+        }
+        void hidePresetSaveDialog(){
+            hideModalOverlay();
+            presetSaveDialog.setVisible(false);
+            presetSaveDialog.toBack();
+        }
         const std::optional<juce::Component*> getModulationDestinationComponent(ModDestination paramId){
             switch (paramId)
             {
@@ -296,6 +332,18 @@ class TelegraphUIContentComponent : public juce::Component {
         GlowEffect modulationGlow = GlowEffect();
         
     private:
+        PresetSaveModalComponent presetSaveDialog;
+        struct OverlayPanel : public juce::Component {
+            OverlayPanel(){}
+            void paint(juce::Graphics& g) override {
+                g.fillAll(
+                    juce::Colour(0x90222222)
+                    // juce::Colours::darkgrey
+                    );
+            }
+            void resized() override {}
+        };
+        OverlayPanel overlayPanel;
         struct HeaderPanel: public juce::Component{
             HeaderPanel()
             :pluginTitle(juce::Label())
@@ -326,7 +374,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 pluginTitle.setBounds(titleBounds);
 
                 presetDisplay->setBounds(bounds.removeFromLeft(titleWidth).withSizeKeepingCentre(titleWidth*0.8, bounds.getHeight()*0.75));
-                auto buttonBounds = bounds.removeFromRight(bounds.getWidth()/4);
+                auto buttonBounds = bounds.removeFromLeft(bounds.getWidth()/4);
                 presetSaveButton->setBounds(buttonBounds.withSizeKeepingCentre(buttonBounds.getWidth()*0.7, buttonBounds.getHeight()*0.7));
             }
             juce::Label pluginTitle;
