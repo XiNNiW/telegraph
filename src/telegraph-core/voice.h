@@ -35,6 +35,7 @@ using algae::dsp::core::math::lerp;
 using algae::dsp::core::oscillator::sine_t;
 using algae::dsp::core::oscillator::cos_t;
 using algae::dsp::core::units::mtof;
+using algae::dsp::core::units::dbtorms;
 
 #define TWO_PI  2*M_PI 
 
@@ -46,21 +47,18 @@ namespace telegraph {
         std::array<chaotic_resonator_t<sample_t>, MAX_UNISON> resonator alignas(16);
 
         //union {
-            std::array<stk_blit_saw_t<sample_t>, MAX_UNISON> sawtooth alignas(16);
-            std::array<stk_blit_square_t<sample_t>, MAX_UNISON> square alignas(16);
-            std::array<sample_t, MAX_UNISON> phase alignas(16);
-            std::array<sample_t, MAX_UNISON> phi alignas(16);
+            std::array<stk_blit_saw_t<sample_t>, MAX_UNISON> sawtooth alignas(16)=std::array<stk_blit_saw_t<sample_t>, MAX_UNISON>();
+            std::array<stk_blit_square_t<sample_t>, MAX_UNISON> square alignas(16)=std::array<stk_blit_square_t<sample_t>, MAX_UNISON>();
+            std::array<sample_t, MAX_UNISON> phase alignas(16)=std::array<sample_t, MAX_UNISON>();
+            std::array<sample_t, MAX_UNISON> phi alignas(16)=std::array<sample_t, MAX_UNISON>();
         //};
         std::array<sample_t, Size<ModDestination>()> parameter_values;
         std::array<onepole_hip_t<sample_t>, 2> highpass_state alignas(16);
         std::array<biquad_t<sample_t>, 2> lowpass_state alignas(16);
-        modulators_t<sample_t> modulators;
-        frequency_t frequency alignas(16);
-        sample_t lfo_phase alignas(16);
-        sample_t lfo_value alignas(16);
-        //audio
+        modulators_t<sample_t> modulators = modulators_t<sample_t>();
+        // frequency_t frequency alignas(16);        //audio
         sample_t resonator_frequency alignas(16);
-        int note alignas(16);
+        int note alignas(16) = 60;
         bool amp_gate alignas(16)=false;
     };
 
@@ -69,6 +67,8 @@ namespace telegraph {
         for(size_t unison_idx=0; unison_idx<MAX_UNISON; unison_idx++){
             v.sawtooth[unison_idx] = stk_blit_saw<sample_t,frequency_t>(440.0, sampleRate);
             v.square[unison_idx] = stk_blit_square<sample_t,frequency_t>(440.0, sampleRate);
+            v.phase[unison_idx] = 0;
+            v.phi[unison_idx] = 0;
         }
         
         return v;
@@ -104,13 +104,13 @@ namespace telegraph {
     }
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON>
-    const inline modulators_t<sample_t> process_modulators(voice_t<sample_t, frequency_t, MAX_UNISON> v, params_t<sample_t> p) {
+    const inline modulators_t<sample_t> process_modulators(voice_t<sample_t, frequency_t, MAX_UNISON> v, params_t<sample_t> p, const frequency_t& controlRate) {
         v.modulators.amp_envelope = adsr_t<sample_t>::process(v.modulators.amp_envelope, v.amp_gate, p.amp_env_params);
         v.modulators.mod_envelope_1 = adsr_t<sample_t>::process(v.modulators.mod_envelope_1, v.amp_gate, p.mod_env_one_params);
         v.modulators.mod_envelope_2 = adsr_t<sample_t>::process(v.modulators.mod_envelope_2, v.amp_gate, p.mod_env_two_params);
-        v.modulators.vib_lfo = lfo_t<sample_t>::process(v.modulators.vib_lfo, v.parameter_values[static_cast<size_t>(ModDestination::VIB_SPEED)]);
-        v.modulators.mod_lfo_1 = lfo_t<sample_t>::process(v.modulators.mod_lfo_1, v.parameter_values[static_cast<size_t>(ModDestination::LFO_ONE_SPEED)]);
-        v.modulators.mod_lfo_2 = lfo_t<sample_t>::process(v.modulators.mod_lfo_2, v.parameter_values[static_cast<size_t>(ModDestination::LFO_TWO_SPEED)]);
+        v.modulators.vib_lfo = lfo_t<sample_t>::process(v.modulators.vib_lfo, v.parameter_values[static_cast<size_t>(ModDestination::VIB_SPEED)], controlRate);
+        v.modulators.mod_lfo_1 = lfo_t<sample_t>::process(v.modulators.mod_lfo_1, v.parameter_values[static_cast<size_t>(ModDestination::LFO_ONE_SPEED)], controlRate);
+        v.modulators.mod_lfo_2 = lfo_t<sample_t>::process(v.modulators.mod_lfo_2, v.parameter_values[static_cast<size_t>(ModDestination::LFO_TWO_SPEED)], controlRate);
         
         return v.modulators;
     }
@@ -118,19 +118,40 @@ namespace telegraph {
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON>
     std::array<sample_t, Size<ModDestination>()> modulate_params(const voice_t<sample_t, frequency_t, MAX_UNISON>& v, const params_t<sample_t>& p){
         std::array<sample_t, Size<ModDestination>()> modulated_values;
-        const modulators_t<sample_t>& mods = v.modulators;
+
         for(size_t param_idx=0; param_idx<Size<ModDestination>(); param_idx++){
             
+            const auto [ min, max, defaultValue, scalingType ] = getParameterRange<sample_t>(ModDestination(param_idx));
+            sample_t val;
 
-            if (param_idx==static_cast<size_t>(ModDestination::EXCITER_FREQ) || param_idx==static_cast<size_t>(ModDestination::RESONATOR_FREQ)){
-                sample_t freq = v.frequency*p.modulatable_params[param_idx];
-                freq = freq==0?1:freq;
-                modulated_values[param_idx] = getModulatedValue<sample_t>(freq, ModDestination(param_idx), mods, p.mod_matrix);
-
-            } else {
-                modulated_values[param_idx] = getModulatedValue<sample_t>(p.modulatable_params[param_idx], ModDestination(param_idx), mods, p.mod_matrix);
-
+            switch (ModDestination(param_idx))
+            {
+            case ModDestination::EXCITER_FREQ:
+                val = v.note + p.modulatable_params[param_idx] + p.modulatable_params[static_cast<size_t>(ModDestination::VIB_AMOUNT)]*sine_t<sample_t,0>::lookup(v.modulators.vib_lfo.phase);
+                break;
+            case ModDestination::RESONATOR_FREQ:
+                val = v.note + p.modulatable_params[param_idx] + p.modulatable_params[static_cast<size_t>(ModDestination::VIB_AMOUNT)]*sine_t<sample_t,0>::lookup(v.modulators.vib_lfo.phase);
+                break;
+            default:
+                val = p.modulatable_params[param_idx];
+                break;
             }
+
+            val = getModulatedValue<sample_t>(val, ModDestination(param_idx), v.modulators, p.mod_matrix);
+
+            switch (scalingType)
+            {
+            case ScalingType::DB:
+                modulated_values[param_idx] = dbtorms(val);
+                break;
+            case ScalingType::SEMITONES:
+                modulated_values[param_idx] = mtof(val);
+                break;
+            default:
+                modulated_values[param_idx] = val;
+                break;
+            }
+            
 
         }
 
@@ -139,7 +160,6 @@ namespace telegraph {
 
     template<typename sample_t, typename frequency_t, size_t MAX_UNISON> 
     const inline voice_t<sample_t, frequency_t, MAX_UNISON> process_control(voice_t<sample_t,frequency_t, MAX_UNISON> v, const params_t<sample_t>& p, const frequency_t& sampleRate, const frequency_t& controlRate){
-        constexpr sample_t one_semi_tone_hz = mtof<frequency_t>(1);
  
         v.parameter_values = modulate_params<sample_t,frequency_t,MAX_UNISON>(v,p);
 
@@ -150,16 +170,18 @@ namespace telegraph {
         
         for(size_t unison_idx=0; unison_idx<MAX_UNISON; unison_idx++){
             const sample_t sign = (unison_idx%2)>0 ? -1 : 1;
-            const sample_t detune_amt = one_semi_tone_hz*sign*v.parameter_values[static_cast<size_t>(ModDestination::DETUNE)]*sample_t(unison_idx)/sample_t(MAX_UNISON);
+            const sample_t max_detune = (mtof(v.note+sign)-mtof(v.note));
+            const sample_t detune_amt = max_detune*v.parameter_values[static_cast<size_t>(ModDestination::DETUNE)]*sample_t(unison_idx)/sample_t(MAX_UNISON);
             const sample_t pitch_mod = detune_amt;
 
             switch (p.wave_mode) {
-                case SAW: v.sawtooth[unison_idx] = setFrequency<sample_t, frequency_t>(v.sawtooth[unison_idx], exciter_freq+pitch_mod, sampleRate); break;
-                case SQUARE: v.square[unison_idx] = setFrequency<sample_t, frequency_t>(v.square[unison_idx], exciter_freq+pitch_mod, sampleRate); break;
+                case Wave::SAW: v.sawtooth[unison_idx] = setFrequency<sample_t, frequency_t>(v.sawtooth[unison_idx], exciter_freq+pitch_mod, sampleRate); break;
+                case Wave::SQUARE: v.square[unison_idx] = setFrequency<sample_t, frequency_t>(v.square[unison_idx], exciter_freq+pitch_mod, sampleRate); break;
                 default: v.phi[unison_idx] = (exciter_freq+pitch_mod)/sampleRate; break;
             }
 
-            const auto f = resonator_frequency+pitch_mod;
+            auto f = resonator_frequency+pitch_mod;
+            f = f>0?f:1;
             const auto q = v.parameter_values[static_cast<size_t>(ModDestination::RESONATOR_Q)];
             const auto c = v.parameter_values[static_cast<size_t>(ModDestination::CHAOS_CHARACTER)];
             const auto a = v.parameter_values[static_cast<size_t>(ModDestination::CHAOS_AMOUNT)];
@@ -171,7 +193,7 @@ namespace telegraph {
             v.lowpass_state[stereo_idx] = lowpass<sample_t,frequency_t>(v.lowpass_state[stereo_idx], v.parameter_values[static_cast<size_t>(ModDestination::LOWPASS_CUTOFF)], v.parameter_values[static_cast<size_t>(ModDestination::LOWPASS_Q)], sampleRate);
             v.highpass_state[stereo_idx] = hip(v.highpass_state[stereo_idx],v.parameter_values[static_cast<size_t>(ModDestination::HIGHPASS_CUTOFF)], sampleRate);
         }
-        v.modulators = process_modulators<sample_t, frequency_t, MAX_UNISON>(v, p);
+        v.modulators = process_modulators<sample_t, frequency_t, MAX_UNISON>(v, p, controlRate);
     
         return v;
     }
@@ -179,11 +201,11 @@ namespace telegraph {
     template<typename sample_t, typename frequency_t, size_t TABLE_SIZE, size_t BLOCK_SIZE, size_t MAX_UNISON>
     const inline std::array<AudioBlock<sample_t, BLOCK_SIZE>,2> pan_unison(const AudioBlock<sample_t, BLOCK_SIZE>& block, const voice_t<sample_t, frequency_t, MAX_UNISON>& v, const params_t<sample_t>& p, const size_t& unison_index){
 
-        const sample_t one_minus_width = (1-v.parameter_values[static_cast<size_t>(ModDestination::STEREO_WIDTH)]);
+        // const sample_t one_minus_width = (1-v.parameter_values[static_cast<size_t>(ModDestination::STEREO_WIDTH)]);
         const sample_t center = 0.125;
         sample_t power_left =  p.unison>1?0.25*sample_t(unison_index)/sample_t(p.unison-1):center;
 
-        power_left = lerp(power_left,center,one_minus_width);
+        power_left = lerp<sample_t>(power_left,center,0);
 
         sample_t power_right = power_left + 0.75;
         return {
@@ -211,8 +233,8 @@ namespace telegraph {
             AudioBlock<sample_t, BLOCK_SIZE> block;
 
             switch(p.wave_mode){
-                case SAW:  std::tie(v.sawtooth[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.sawtooth[unison_idx]); break;
-                case SQUARE: std::tie(v.square[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.square[unison_idx]); break;
+                case Wave::SAW:  std::tie(v.sawtooth[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.sawtooth[unison_idx]); break;
+                case Wave::SQUARE: std::tie(v.square[unison_idx], exciter) = process<sample_t, BLOCK_SIZE>(v.square[unison_idx]); break;
                 default: std::tie(v.phase[unison_idx], exciter) = sineOsc<sample_t, TABLE_SIZE, BLOCK_SIZE>::process(v.phase[unison_idx], v.phi[unison_idx]); break;
             }
 
@@ -221,11 +243,12 @@ namespace telegraph {
             block = exciter;
 
             switch(p.feedback_mode){
-                case TANH: std::tie(v.resonator[unison_idx],block) = process<sample_t, tanh_approx_pade<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                case LOWERED_BELL: std::tie(v.resonator[unison_idx],block) = process<sample_t, lowered_bell<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                case WRAP: std::tie(v.resonator[unison_idx],block) = process<sample_t, algae::dsp::core::math::wrap<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                case CLIP: std::tie(v.resonator[unison_idx],block) = process<sample_t, clip<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                case FeedbackMode::TANH: std::tie(v.resonator[unison_idx],block) = process<sample_t, tanh_approx_pade<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                case FeedbackMode::LOWERED_BELL: std::tie(v.resonator[unison_idx],block) = process<sample_t, lowered_bell<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                case FeedbackMode::WRAP: std::tie(v.resonator[unison_idx],block) = process<sample_t, algae::dsp::core::math::wrap<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                case FeedbackMode::CLIP: std::tie(v.resonator[unison_idx],block) = process<sample_t, clip<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                case FeedbackMode::COS: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                //default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
             }
 
             block *= exciter*(-1) + 1;
@@ -241,7 +264,7 @@ namespace telegraph {
  
             output[stereo_idx] = tanh_approx_pade<sample_t>(output[stereo_idx]);
             
-            output[stereo_idx] *= 0.25*v.parameter_values[static_cast<size_t>(ModDestination::GAIN)];
+            output[stereo_idx] *= /*0.25**/v.parameter_values[static_cast<size_t>(ModDestination::GAIN)];
 
             std::tie(v.highpass_state[stereo_idx], output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass_state[stereo_idx], output[stereo_idx]);
             
@@ -294,8 +317,6 @@ namespace telegraph {
         
         v.note = note;
         v.modulators.velocity = velocity/127.0;
-        frequency_t freq = mtof<frequency_t>(note);
-        v.frequency = freq;
 
         return process_control(v, p, sampleRate, controlRate);
     }

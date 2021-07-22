@@ -43,7 +43,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
       new SliderAttachment (
         stateTree, 
         TokenName<ModDestination>(ModDestination::EXCITER_FREQ), 
-        *ui.getUnisonAmountKnob()
+        *ui.getExciterTuneKnob()
       )
     );
     unisonAmountAttachment.reset (
@@ -257,9 +257,9 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
       for(size_t dest_idx=0; dest_idx<Size<ModDestination>(); dest_idx++){
 
         
-        std::string parameter_id = TokenName<ModSource>(ModSource(source_idx)) 
+        std::string parameter_id = std::string(TokenName<ModSource>(ModSource(source_idx)) )
             + "_to_" 
-            + telegraph::TokenName<ModDestination>(ModDestination(dest_idx));
+            + std::string(telegraph::TokenName<ModDestination>(ModDestination(dest_idx)));
 
         modulationMatrixKnobs[ModSource(source_idx)][ModDestination(dest_idx)].reset(
             new SliderAttachment (
@@ -273,7 +273,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
     }
   
     addAndMakeVisible(ui);
-
+    // auto screenBounds = getScreenBounds()
     setSize (1000, 900);
 
 

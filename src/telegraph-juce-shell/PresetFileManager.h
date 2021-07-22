@@ -52,7 +52,7 @@ class PresetFileManager {
         }
 
         const std::optional<juce::String> getPresetName(const size_t& presetNumber){
-            return presetNumber<presetList.size()
+            return presetNumber<static_cast<size_t>(presetList.size())
                     ?std::make_optional(presetList[presetNumber].getFileNameWithoutExtension())
                     :std::nullopt;
         }

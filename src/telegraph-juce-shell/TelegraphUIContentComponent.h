@@ -347,14 +347,14 @@ class TelegraphUIContentComponent : public juce::Component {
         struct HeaderPanel: public juce::Component{
             HeaderPanel()
             :pluginTitle(juce::Label())
-            ,presetDisplay(std::make_unique<juce::TextButton>("Init"))
-            ,presetSaveButton(std::make_unique<juce::TextButton>("save"))
+            ,presetDisplay(std::make_unique<juce::TextButton>())
+            ,presetSaveButton(std::make_unique<juce::TextButton>())
             {
                 pluginTitle.setText("Telegraph", juce::dontSendNotification);
                 pluginTitle.setFont(juce::Font (32.0f, juce::Font::bold));
                 addAndMakeVisible(pluginTitle);
 
-                presetDisplay->setName("Init");
+                presetDisplay->setName("Init Patch");
                 presetDisplay->setColour(juce::TextButton::buttonColourId, juce::Colours::darkslateblue);
                 presetDisplay->setColour(juce::TextButton::buttonOnColourId, juce::Colours::darkslateblue);
                 presetDisplay->setColour(juce::TextButton::textColourOffId, juce::Colours::cyan);
@@ -518,10 +518,12 @@ class TelegraphUIContentComponent : public juce::Component {
                     ,highpassCutoffKnob(std::move(makeTelegraphKnob()))
                     ,highpassCutoffLabel(std::move(makeTelegraphKnobLabel(highpassCutoffKnob.get(),ModDestination::HIGHPASS_CUTOFF)))
                     {
+                        //{"COS", "WRAP", "TANH", "CLIP", "LOWERED_BELL"}
                         resonatorSelector->addItem("COS",1);
-                        resonatorSelector->addItem("TANH",2);
-                        resonatorSelector->addItem("WRAP",3);
-                        resonatorSelector->addItem("LOWERED BELL",4);
+                        resonatorSelector->addItem("WRAP",2);
+                        resonatorSelector->addItem("TANH",3);
+                        resonatorSelector->addItem("CLIP",4);
+                        resonatorSelector->addItem("LOWERED BELL",5);
                         addAndMakeVisible(*resonatorSelector);
                         addAndMakeVisible(*resonatorTuneKnob);
                         addAndMakeVisible(*resonatorTuneLabel);

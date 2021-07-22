@@ -68,19 +68,20 @@ private:
     juce::AudioProcessorValueTreeState parameters;
     std::array<telegraph::voice_t<float, float, MAX_UNISON>,NUMBER_OF_VOICES> voices;
     telegraph::params_t<float> params;
+    // std::array<std::atomic<float>*,telegraph::Size<telegraph::ModDestination>()> modulatableParamValues;
     std::atomic<float>* exciter_pitch;
-    std::atomic<float>* exciter_waveform; //
+    std::atomic<float>* exciter_waveform; 
     std::atomic<float>* exciter_gain;
     std::atomic<float>* exciter_vibrato_amount;
     std::atomic<float>* resonator_q;
     std::atomic<float>* resonator_pitch;
-    std::atomic<float>* resonator_type; //
+    std::atomic<float>* resonator_type; 
     std::atomic<float>* resonator_chaos_character;
     std::atomic<float>* resonator_chaos_amount;
-    std::atomic<float>* attack; //
-    std::atomic<float>* decay;//
-    std::atomic<float>* sustain;//
-    std::atomic<float>* release;//
+    std::atomic<float>* attack; 
+    std::atomic<float>* decay;
+    std::atomic<float>* sustain;
+    std::atomic<float>* release;
     std::atomic<float>* lowpass_cutoff;
     std::atomic<float>* lowpass_q;
     std::atomic<float>* highpass_cutoff;
@@ -89,15 +90,15 @@ private:
     std::atomic<float>* unison_detune;
     std::atomic<float>* gain;
     
-    std::atomic<float>* env_one_attack;//
-    std::atomic<float>* env_one_decay;//
-    std::atomic<float>* env_one_sustain;//
-    std::atomic<float>* env_one_release;//
+    std::atomic<float>* env_one_attack;
+    std::atomic<float>* env_one_decay;
+    std::atomic<float>* env_one_sustain;
+    std::atomic<float>* env_one_release;
     
-    std::atomic<float>* env_two_attack;//
-    std::atomic<float>* env_two_decay;//
-    std::atomic<float>* env_two_sustain;//
-    std::atomic<float>* env_two_release;//
+    std::atomic<float>* env_two_attack;
+    std::atomic<float>* env_two_decay;
+    std::atomic<float>* env_two_sustain;
+    std::atomic<float>* env_two_release;
    
     std::atomic<float>* exciter_vibrato_speed;
     std::atomic<float>* lfo_one_speed;

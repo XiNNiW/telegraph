@@ -150,6 +150,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -std=c++17 -rdynamic"
 
 add_executable( TelegraphTests 
     ${PROJECT_SOURCE_DIR}/test/telegraph-core/voice_test.cpp
+    ${PROJECT_SOURCE_DIR}/test/telegraph-core/parameters_test.cpp
    
 )
 target_include_directories(TelegraphTests PUBLIC ${PROJECT_SOURCE_DIR}/src)
