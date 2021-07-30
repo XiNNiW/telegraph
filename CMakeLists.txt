@@ -106,6 +106,14 @@ target_compile_definitions(telegraph PUBLIC
 target_sources(telegraph PRIVATE
         src/telegraph-juce-shell/PluginEditor.cpp
         src/telegraph-juce-shell/PluginProcessor.cpp
+        src/telegraph-juce-shell/fonts/USSRStencil.cpp
+        src/telegraph-juce-shell/fonts/ARKES.cpp
+        src/telegraph-juce-shell/fonts/ORCB.cpp
+        src/telegraph-juce-shell/fonts/NMCondensed.cpp
+        src/telegraph-juce-shell/fonts/NMMedium.cpp
+        src/telegraph-juce-shell/fonts/Eunomia.cpp
+        src/telegraph-juce-shell/fonts/FAW.cpp
+        src/telegraph-juce-shell/fonts/hypo.cpp
         ${SURGE_GENERATED_SOURCES}
         ${SURGE_OS_SOURCES}
         ${SURGE_SYNTH_SOURCES}

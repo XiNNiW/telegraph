@@ -252,9 +252,9 @@ namespace telegraph {
             switch (d)
             {
             case ModDestination::VIB_AMOUNT:        return  {0,         2,           0,              ScalingType::SEMITONES  }; break;
-            case ModDestination::VIB_SPEED:         return  {0,         8,           1.5,            ScalingType::LINEAR     }; break;
-            case ModDestination::LFO_ONE_SPEED:     return  {0,         8,           0.5,            ScalingType::LINEAR     }; break;
-            case ModDestination::LFO_TWO_SPEED:     return  {0,         8,           0.5,            ScalingType::LINEAR     }; break;
+            case ModDestination::VIB_SPEED:         return  {0,         8,           1.5,            ScalingType::FREQ       }; break;
+            case ModDestination::LFO_ONE_SPEED:     return  {0,         8,           0.5,            ScalingType::FREQ       }; break;
+            case ModDestination::LFO_TWO_SPEED:     return  {0,         8,           0.5,            ScalingType::FREQ       }; break;
             case ModDestination::EXCITER_FREQ:      return  {-12,       12,          0,              ScalingType::SEMITONES  }; break;
             case ModDestination::EXCITER_GAIN:      return  {neg_inf,   minus_ten_db,minus_24_db,    ScalingType::DB         }; break;
             case ModDestination::RESONATOR_FREQ:    return  {-12,       12,          0,              ScalingType::SEMITONES  }; break;
@@ -263,7 +263,7 @@ namespace telegraph {
             case ModDestination::CHAOS_CHARACTER:   return  {0,         100,         100,            ScalingType::EXP        }; break;
             case ModDestination::DETUNE:            return  {0,         1,           0.5,            ScalingType::LINEAR     }; break;
             case ModDestination::LOWPASS_CUTOFF:    return  {200,       20000,       20000,          ScalingType::FREQ       }; break;
-            case ModDestination::LOWPASS_Q:         return  {0,         1,           0.01,           ScalingType::LINEAR/*EXP*/        }; break;
+            case ModDestination::LOWPASS_Q:         return  {0,         10,          0.1,            ScalingType::EXP        }; break;
             case ModDestination::HIGHPASS_CUTOFF:   return  {30,        1000,        30,             ScalingType::LINEAR     }; break;
             case ModDestination::STEREO_WIDTH:      return  {0,         1,           1,              ScalingType::LINEAR     }; break;
             case ModDestination::GAIN:              return  {neg_inf,   minus_ten_db,minus_24_db,    ScalingType::DB         }; break;

@@ -133,54 +133,47 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
                         
                       };
     for(size_t mod_dest_idx=0; mod_dest_idx<telegraph::Size<telegraph::ModDestination>(); mod_dest_idx++){
-        // auto scaleType = std::get<3>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx)));
-        // switch (scaleType)
-        // {
-        // case telegraph::ScalingType::DB:
-        //     paramList.add( 
-        //         std::make_unique<juce::AudioParameterFloat> (
-        //             telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
-        //             telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
-        //             juce::NormalisableRange<float>(
-        //                 std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
-        //                 std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
-        //                 [](float rangeStart, float rangeEnd, float val)->float{return algae::dsp::core::units::rmstodb(val);}, //from 0-1
-        //                 [](float rangeStart, float rangeEnd, float val)->float{return algae::dsp::core::units::dbtorms(val);}  //to 0-1
-        //             ),
-        //             std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
-        //         )   
-        //     ); 
-        //     break;
-        // case telegraph::ScalingType::FREQ:
-        //     paramList.add( 
-        //         std::make_unique<juce::AudioParameterFloat> (
-        //             telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
-        //             telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
-        //             juce::NormalisableRange<float>(
-        //                 std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
-        //                 std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_from_norm_exp(val,min,max);}, //from 0-1
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_to_norm_exp(val,min,max);}  //to 0-1
-        //             ),
-        //             std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
-        //         )   
-        //     ); 
-        //     break;
-        // case telegraph::ScalingType::EXP:
-        //     paramList.add( 
-        //         std::make_unique<juce::AudioParameterFloat> (
-        //             telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
-        //             telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
-        //             juce::NormalisableRange<float>(
-        //                 std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
-        //                 std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_from_norm_exp(val,min,max);}, //from 0-1
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_to_norm_exp(val,min,max);}  //to 0-1
-        //             ),
-        //             std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
-        //         )   
-        //     ); 
-        //     break;
+        auto scaleType = std::get<3>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx)));
+        switch (scaleType)
+        {
+        case telegraph::ScalingType::FREQ:
+            paramList.add( 
+                std::make_unique<juce::AudioParameterFloat> (
+                    telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
+                    telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
+                    juce::NormalisableRange<float>(
+                        std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
+                        std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
+                        [](float min, float max, float normalized)->float{
+                            return min + (pow(2,normalized*10) - 1)*(max-min)/(1023);
+                        }, //from 0-1
+                        [](float min, float max, float scaled)->float{
+                            return log2(1+(scaled - min)*(1023)/(max-min))/10;
+                        }  //to 0-1
+                    ),
+                    std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
+                )   
+            );
+            break;
+        case telegraph::ScalingType::EXP:
+            paramList.add( 
+                std::make_unique<juce::AudioParameterFloat> (
+                    telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
+                    telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
+                    juce::NormalisableRange<float>(
+                        std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
+                        std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
+                        [](float min, float max, float normalized)->float{
+                            return min + (exp(normalized*10) - 1)*(max-min)/(exp(10));
+                        }, //from 0-1
+                        [](float min, float max, float scaled)->float{
+                            return log(1+(scaled - min)*(exp(10))/(max-min))/10;
+                        }  //to 0-1
+                    ),
+                    std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
+                )   
+            ); 
+            break;
         // case telegraph::ScalingType::QSEMITONES:
         //     paramList.add( 
         //         std::make_unique<juce::AudioParameterFloat> (
@@ -197,7 +190,7 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
         //         )   
         //     ); 
         //     break;
-        // default:
+        default:
             paramList.add( 
                 std::make_unique<juce::AudioParameterFloat> (
                     telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
@@ -207,9 +200,9 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
                     std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
                 )   
             ); 
-        //     break;
+            break;
 
-        // }
+        }
         
     }
     for(size_t mod_source_idx=0; mod_source_idx<telegraph::Size<telegraph::ModSource>(); mod_source_idx++){
