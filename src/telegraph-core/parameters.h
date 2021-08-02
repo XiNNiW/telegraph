@@ -109,10 +109,10 @@ namespace telegraph {
             "Vibrato Speed",
             "Speed",
             "Speed",
-            "Exciter Tune",
-            "Exciter Gain",
-            "Resonator Tune",
-            "Resonator Q",
+            "Tune",
+            "Gain",
+            "Tune",
+            "Q",
             "Chaos Amount",
             "Chaos Character",
             "Unison Detune",
@@ -192,6 +192,13 @@ namespace telegraph {
         return names[static_cast<size_t>(value)];
     }
 
+    const inline std::string composeModulationMappingTokenName(const size_t& source_idx, const size_t& dest_idx){
+        std::string parameter_id = std::string(TokenName<ModSource>(ModSource(source_idx))) 
+                                        + "_to_" 
+                                        + std::string(TokenName<ModDestination>(ModDestination(dest_idx)));
+        return parameter_id;
+    }
+
     template<typename sample_t>
     struct lfo_t{
         sample_t phase alignas(16)=0;
@@ -228,8 +235,8 @@ namespace telegraph {
     enum class FeedbackMode {
         COS,
         TANH,
-        LOWERED_BELL,
-        CLIP,
+        // LOWERED_BELL,
+        // CLIP,
         WRAP
     };
 
@@ -251,10 +258,10 @@ namespace telegraph {
             constexpr sample_t twenty_db = 120;
             switch (d)
             {
-            case ModDestination::VIB_AMOUNT:        return  {0,         2,           0,              ScalingType::SEMITONES  }; break;
-            case ModDestination::VIB_SPEED:         return  {0,         8,           1.5,            ScalingType::FREQ       }; break;
-            case ModDestination::LFO_ONE_SPEED:     return  {0,         8,           0.5,            ScalingType::FREQ       }; break;
-            case ModDestination::LFO_TWO_SPEED:     return  {0,         8,           0.5,            ScalingType::FREQ       }; break;
+            case ModDestination::VIB_AMOUNT:        return  {0,         1.5,           0,            ScalingType::SEMITONES  }; break;
+            case ModDestination::VIB_SPEED:         return  {0,         3.5,           1.5,            ScalingType::FREQ       }; break;
+            case ModDestination::LFO_ONE_SPEED:     return  {0,         3.5,           0.5,            ScalingType::FREQ       }; break;
+            case ModDestination::LFO_TWO_SPEED:     return  {0,         3.5,           0.5,            ScalingType::FREQ       }; break;
             case ModDestination::EXCITER_FREQ:      return  {-12,       12,          0,              ScalingType::SEMITONES  }; break;
             case ModDestination::EXCITER_GAIN:      return  {neg_inf,   minus_ten_db,minus_24_db,    ScalingType::DB         }; break;
             case ModDestination::RESONATOR_FREQ:    return  {-12,       12,          0,              ScalingType::SEMITONES  }; break;

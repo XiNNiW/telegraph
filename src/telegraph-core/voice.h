@@ -244,9 +244,9 @@ namespace telegraph {
 
             switch(p.feedback_mode){
                 case FeedbackMode::TANH: std::tie(v.resonator[unison_idx],block) = process<sample_t, tanh_approx_pade<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                case FeedbackMode::LOWERED_BELL: std::tie(v.resonator[unison_idx],block) = process<sample_t, lowered_bell<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                // case FeedbackMode::LOWERED_BELL: std::tie(v.resonator[unison_idx],block) = process<sample_t, lowered_bell<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
                 case FeedbackMode::WRAP: std::tie(v.resonator[unison_idx],block) = process<sample_t, algae::dsp::core::math::wrap<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
-                case FeedbackMode::CLIP: std::tie(v.resonator[unison_idx],block) = process<sample_t, clip<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
+                // case FeedbackMode::CLIP: std::tie(v.resonator[unison_idx],block) = process<sample_t, clip<sample_t>, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
                 case FeedbackMode::COS: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
                 //default: std::tie(v.resonator[unison_idx],block) = process<sample_t, cos_t<sample_t,TABLE_SIZE>::lookup, BLOCK_SIZE>(v.resonator[unison_idx],exciter);break;
             }
@@ -261,6 +261,8 @@ namespace telegraph {
 
 
         for(size_t stereo_idx=0; stereo_idx<2; stereo_idx++){
+
+            output[stereo_idx] *= v.modulators.velocity*1.2;
  
             output[stereo_idx] = tanh_approx_pade<sample_t>(output[stereo_idx]);
             

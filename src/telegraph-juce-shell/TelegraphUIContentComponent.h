@@ -10,26 +10,37 @@
 using telegraph::ModDestination;
 using telegraph::NonModulatedParameter;
 
-
-
 static std::unique_ptr<juce::Slider> makeTelegraphKnob(){
+    
     auto knob=std::make_unique<juce::Slider>();
-    knob->setSliderStyle (juce::Slider::SliderStyle::Rotary);
+    knob->setSliderStyle (juce::Slider::SliderStyle::RotaryVerticalDrag);
     // knob->setTextBoxStyle (juce::Slider::TextBoxAbove, true, 20, 0);
-    knob->setTextBoxStyle (juce::Slider::TextBoxBelow, true, 20, 0);
+    
+    knob->setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 10);
+    knob->setTextBoxIsEditable(true);
+    knob->showTextBox();
+    knob->setColour(knob->textBoxTextColourId, juce::Colour(0xaa000000));
+    knob->setColour(knob->textBoxOutlineColourId, juce::Colours::transparentBlack);
     
     return knob;
 }
 
 static void styleTelegraphModulationKnob(juce::Slider* knob){
-    knob->setSliderStyle (juce::Slider::SliderStyle::Rotary);
-    knob->setTextBoxStyle (juce::Slider::TextBoxBelow, true, 20, 0);
-    knob->setVisible(false);
-    knob->toBack();
+    knob->setLookAndFeel(TelegraphLookAndFeelProvider::Instance().getModulationKnobLookAndFeel());
+    knob->setSliderStyle (juce::Slider::SliderStyle::RotaryVerticalDrag);
+    knob->setTextBoxStyle(juce::Slider::TextBoxBelow, true, 100, 10);
+    knob->setTextBoxIsEditable(true);
+    knob->showTextBox();
+    knob->setColour(knob->textBoxTextColourId, juce::Colours::transparentBlack);
+    knob->setColour(knob->textBoxOutlineColourId, juce::Colours::transparentBlack);
     knob->setColour(juce::Slider::backgroundColourId, juce::Colours::transparentBlack);
     knob->setColour(juce::Slider::thumbColourId, juce::Colours::transparentBlack);
     knob->setColour(juce::Slider::rotarySliderFillColourId, juce::Colours::turquoise);
     knob->setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colours::transparentBlack);
+    knob->setTextBoxIsEditable(true);
+    knob->toBack();
+    knob->setVisible(false);
+   
 }
 
 static std::unique_ptr<juce::Slider> makeTelegraphModulationAmountKnob(){
@@ -93,10 +104,11 @@ static void positionKnobOnPanelGrid(
     juce::Component& knob
 ){
     auto leftInset = 15;
+    auto labelHeight = 15;
     panelBounds.removeFromLeft(leftInset);
-    auto knobSize = panelBounds.getWidth()/knobsPerRow;
+    auto knobSize = panelBounds.getWidth()/knobsPerRow ;
     auto xLoc = leftInset + (knobSize * (knobPos % knobsPerRow));
-    auto yLoc = (knobSize * (knobPos / knobsPerRow)) + panelBounds.getY();
+    auto yLoc = ((knobSize + labelHeight) * (knobPos / knobsPerRow)) + panelBounds.getY();
     auto width = knobSize;
     auto height = knobSize;
 
@@ -184,6 +196,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     addAndMakeVisible(*modulationAmountKnobs[ModSource(source_idx)][ModDestination(dest_idx)]);
                 }
             }
+            modulationGlow.setGlowProperties(2.2, juce::Colour(0x88ffffff));
         }
         void paint (juce::Graphics& g) override
         {
@@ -216,10 +229,11 @@ class TelegraphUIContentComponent : public juce::Component {
                             targetKnob->setComponentEffect (nullptr);
                         }
                         
-                        
-                        modulationAmountKnobs[currentModSource][ModDestination(idx)]->setBounds(modulationAmountKnobs[currentModSource][ModDestination(idx)]->getParentComponent()->getLocalArea (targetKnob, targetKnob->getLocalBounds()));
+                        auto targetBounds = modulationAmountKnobs[currentModSource][ModDestination(idx)]->getParentComponent()->getLocalArea (targetKnob, targetKnob->getLocalBounds());
+                        modulationAmountKnobs[currentModSource][ModDestination(idx)]->setBounds(targetBounds);
                         modulationAmountKnobs[currentModSource][ModDestination(idx)]->setVisible(true);
                         modulationAmountKnobs[currentModSource][ModDestination(idx)]->toFront(false);
+                        
                         targetKnob->setComponentEffect (&modulationGlow);
                     }
                     else {
@@ -249,10 +263,10 @@ class TelegraphUIContentComponent : public juce::Component {
         std::unique_ptr<juce::Slider>& getResonatorQKnob(){return modulePanel.topRow.resonatorPanel.resonatorQKnob;}
         std::unique_ptr<juce::Slider>& getChaosAmountKnob(){return modulePanel.topRow.resonatorPanel.chaosAmountKnob;}
         std::unique_ptr<juce::Slider>& getChaosCharacterKnob(){return modulePanel.topRow.resonatorPanel.chaosCharacterKnob;}
-        std::unique_ptr<juce::Slider>& getHighpassCutoffKnob(){return modulePanel.topRow.resonatorPanel.highpassCutoffKnob;}
         //AMP PANEL
         std::unique_ptr<juce::Slider>& getLowpasCutoffKnob(){return modulePanel.topRow.ampPanel.lowpassCutoffKnob;}
         std::unique_ptr<juce::Slider>& getLowpassQKnob(){return modulePanel.topRow.ampPanel.lowpassQKnob;}
+        std::unique_ptr<juce::Slider>& getHighpassCutoffKnob(){return modulePanel.topRow.ampPanel.highpassCutoffKnob;}
         std::unique_ptr<juce::TextButton>& getAmpMapButton(){return modulePanel.topRow.ampPanel.ampMapBtn;}
         std::unique_ptr<juce::Slider>& getAmpAttackKnob(){return modulePanel.topRow.ampPanel.ampAttackKnob;}
         std::unique_ptr<juce::Slider>& getAmpDecayKnob(){return modulePanel.topRow.ampPanel.ampDecayKnob;}
@@ -296,7 +310,7 @@ class TelegraphUIContentComponent : public juce::Component {
             presetSaveDialog.setVisible(false);
             presetSaveDialog.toBack();
         }
-        const std::optional<juce::Component*> getModulationDestinationComponent(ModDestination paramId){
+        const std::optional<juce::Slider*> getModulationDestinationComponent(ModDestination paramId){
             switch (paramId)
             {
             case ModDestination::VIB_AMOUNT:
@@ -361,15 +375,15 @@ class TelegraphUIContentComponent : public juce::Component {
         GlowEffect modulationGlow = GlowEffect();
         
         
+        
     private:
         PresetSaveModalComponent presetSaveDialog;
         struct OverlayPanel : public juce::Component {
             OverlayPanel(){}
             void paint(juce::Graphics& g) override {
                 g.fillAll(
-                    juce::Colour(0x90222222)
-                    // juce::Colours::darkgrey
-                    );
+                    juce::Colour(0x99222222)
+                );
             }
             void resized() override {}
         };
@@ -383,8 +397,7 @@ class TelegraphUIContentComponent : public juce::Component {
                 pluginTitle.setText("Telegraph", juce::dontSendNotification);
                 pluginTitle.setFont(TelegraphFontManager::Instance().getDisplayFont());
                 presetSaveButton->setLookAndFeel(TelegraphLookAndFeelProvider::Instance().getIconLookAndFeel());
-                // presetSaveButton->getLookAndFeel().setDefaultSansSerifTypeface(TelegraphFontManager::Instance().getIconTypeface());
-                // pluginTitle.setFont(juce::Font (32.0f, juce::Font::bold));
+
                 addAndMakeVisible(pluginTitle);
 
                 presetDisplay->setName("Init Patch");
@@ -561,8 +574,6 @@ class TelegraphUIContentComponent : public juce::Component {
                     ,chaosAmountLabel(std::move(makeTelegraphKnobLabel(chaosAmountKnob.get(),ModDestination::CHAOS_AMOUNT)))
                     ,chaosCharacterKnob(std::move(makeTelegraphKnob()))
                     ,chaosCharacterLabel(std::move(makeTelegraphKnobLabel(chaosCharacterKnob.get(),ModDestination::CHAOS_CHARACTER)))
-                    ,highpassCutoffKnob(std::move(makeTelegraphKnob()))
-                    ,highpassCutoffLabel(std::move(makeTelegraphKnobLabel(highpassCutoffKnob.get(),ModDestination::HIGHPASS_CUTOFF)))
                     {
                         panelTitle.setText("RESONATOR", juce::dontSendNotification);
                         panelTitle.setFont(TelegraphFontManager::Instance().getSecondaryHeaderFont());
@@ -571,8 +582,8 @@ class TelegraphUIContentComponent : public juce::Component {
                         resonatorSelector->addItem("COS",1);
                         resonatorSelector->addItem("WRAP",2);
                         resonatorSelector->addItem("TANH",3);
-                        resonatorSelector->addItem("CLIP",4);
-                        resonatorSelector->addItem("LOWERED BELL",5);
+                        // resonatorSelector->addItem("CLIP",4);
+                        // resonatorSelector->addItem("LOWERED BELL",5);
                         addAndMakeVisible(panelTitle);
                         addAndMakeVisible(*resonatorSelector);
                         addAndMakeVisible(*resonatorTuneKnob);
@@ -583,8 +594,7 @@ class TelegraphUIContentComponent : public juce::Component {
                         addAndMakeVisible(*chaosAmountLabel);
                         addAndMakeVisible(*chaosCharacterKnob);
                         addAndMakeVisible(*chaosCharacterLabel);
-                        addAndMakeVisible(*highpassCutoffKnob);
-                        addAndMakeVisible(*highpassCutoffLabel);
+                        
                     }
                     void resized() override {
                         auto bounds = getLocalBounds();
@@ -605,7 +615,7 @@ class TelegraphUIContentComponent : public juce::Component {
                         positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,1,*resonatorQKnob);
                         positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,3,*chaosAmountKnob);
                         positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,4,*chaosCharacterKnob);
-                        positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,6,*highpassCutoffKnob);
+                        // positionKnobOnPanelGrid(bounds.withTop(topInset+dropdownHeight+topInset),3,6,*highpassCutoffKnob);
 
                     }
                     void paint (juce::Graphics& g) override
@@ -629,8 +639,7 @@ class TelegraphUIContentComponent : public juce::Component {
                     std::unique_ptr<juce::Label> chaosAmountLabel;
                     std::unique_ptr<juce::Slider> chaosCharacterKnob;
                     std::unique_ptr<juce::Label> chaosCharacterLabel;
-                    std::unique_ptr<juce::Slider> highpassCutoffKnob;
-                    std::unique_ptr<juce::Label> highpassCutoffLabel;
+                    
                 };
                 ResonatorPanel resonatorPanel;
                 struct AmpPanel:juce::Component{
@@ -640,6 +649,8 @@ class TelegraphUIContentComponent : public juce::Component {
                     ,lowpassCutoffLabel(std::move(makeTelegraphKnobLabel(lowpassCutoffKnob.get(),ModDestination::LOWPASS_CUTOFF)))
                     ,lowpassQKnob(std::move(makeTelegraphKnob()))
                     ,lowpassQLabel(std::move(makeTelegraphKnobLabel(lowpassQKnob.get(),ModDestination::LOWPASS_Q)))
+                    ,highpassCutoffKnob(std::move(makeTelegraphKnob()))
+                    ,highpassCutoffLabel(std::move(makeTelegraphKnobLabel(highpassCutoffKnob.get(),ModDestination::HIGHPASS_CUTOFF)))
                     ,ampMapBtn(std::move(makeTelegraphModMapButton()))
                     ,ampMapLabel(std::move(makeKnobLabel(ampMapBtn.get(),"Amp Env:")))
                     ,ampAttackKnob(std::move(makeTelegraphKnob()))
@@ -661,6 +672,8 @@ class TelegraphUIContentComponent : public juce::Component {
                         addAndMakeVisible(*lowpassCutoffLabel);
                         addAndMakeVisible(*lowpassQKnob);
                         addAndMakeVisible(*lowpassQLabel);
+                        addAndMakeVisible(*highpassCutoffKnob);
+                        addAndMakeVisible(*highpassCutoffLabel);
                         addAndMakeVisible(*ampMapBtn);
                         addAndMakeVisible(*ampAttackKnob);
                         addAndMakeVisible(*ampAttackLabel);
@@ -679,9 +692,10 @@ class TelegraphUIContentComponent : public juce::Component {
                         panelTitle.setBounds(bounds.removeFromTop(titleHeight));
                         bounds = bounds.withTrimmedTop(titleHeight);
 
-                        auto topInset = bounds.getHeight()/16; //titleHeight;
-                        positionKnobOnPanelGrid(bounds,3,0,*lowpassCutoffKnob);
-                        positionKnobOnPanelGrid(bounds,3,1,*lowpassQKnob);
+                        // auto topInset = bounds.getHeight()/16; //titleHeight;
+                        positionKnobOnPanelGrid(bounds,3,0,*highpassCutoffKnob);
+                        positionKnobOnPanelGrid(bounds,3,1,*lowpassCutoffKnob);
+                        positionKnobOnPanelGrid(bounds,3,2,*lowpassQKnob);
                         auto filterKnobHeight = bounds.getWidth()/3;
                         bounds = bounds.withTrimmedTop(filterKnobHeight+titleHeight);
                         positionKnobOnPanelGrid(bounds,5,0,*ampMapBtn);
@@ -708,6 +722,8 @@ class TelegraphUIContentComponent : public juce::Component {
                     std::unique_ptr<juce::Label>      lowpassCutoffLabel;
                     std::unique_ptr<juce::Slider>     lowpassQKnob;
                     std::unique_ptr<juce::Label>      lowpassQLabel;
+                    std::unique_ptr<juce::Slider> highpassCutoffKnob;
+                    std::unique_ptr<juce::Label> highpassCutoffLabel;
                     std::unique_ptr<juce::TextButton> ampMapBtn;
                     std::unique_ptr<juce::Label>      ampMapLabel;
                     std::unique_ptr<juce::Slider>     ampAttackKnob;
@@ -817,14 +833,12 @@ class TelegraphUIContentComponent : public juce::Component {
                 void paint (juce::Graphics& g) override
                 {
                     auto bounds = getLocalBounds();
-                    // g.fillAll (juce::Colours::black);
                     g.fillAll (juce::Colour(0x99000000));
                     g.setColour(juce::Colour(0xff444444 ));
                     auto trimmedBounds = bounds.withTrimmedLeft(2);
                     trimmedBounds = trimmedBounds.withTrimmedRight(2);
                     trimmedBounds = trimmedBounds.withTrimmedBottom(2);
                     g.fillRect(trimmedBounds);
-                    // g.fillAll (juce::Colour(0xff444444 ));
 
                 }
                 juce::Label panelTitle;

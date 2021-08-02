@@ -274,7 +274,7 @@ TelegraphAudioProcessorEditor::TelegraphAudioProcessorEditor (TelegraphAudioProc
   
     addAndMakeVisible(ui);
     // auto screenBounds = getScreenBounds()
-    setSize (1000, 900);
+    setSize (1000, 950);
 
 
 }

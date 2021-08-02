@@ -33,7 +33,7 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
                             new juce::AudioParameterChoice(
                                 TokenName<NonModulatedParameter>(NonModulatedParameter::RESONATOR_TYPE), 
                                 DisplayName<NonModulatedParameter>(NonModulatedParameter::RESONATOR_TYPE),
-                                {"COS", "WRAP", "TANH", "CLIP", "LOWERED_BELL"}, 
+                                {"COS", "WRAP", "TANH"}, 
                                 2
                             )
                         ),
@@ -174,22 +174,6 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
                 )   
             ); 
             break;
-        // case telegraph::ScalingType::QSEMITONES:
-        //     paramList.add( 
-        //         std::make_unique<juce::AudioParameterFloat> (
-        //             telegraph::TokenName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameterID
-        //             telegraph::DisplayName<ModDestination>(telegraph::ModDestination(mod_dest_idx)), // parameter name
-        //             juce::NormalisableRange<float>(
-        //                 std::get<0>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // minimum value
-        //                 std::get<1>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))),   // maximum value
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_from_norm(val,min,max);}, //from 0-1
-        //                 [](float min, float max, float val)->float{return telegraph::scale_parameter_to_norm(val,min,max);},  //to 0-1
-        //                 [](float min, float max, float val)->float{return floor(val);}
-        //             ),
-        //             std::get<2>(telegraph::getParameterRange<float>(telegraph::ModDestination(mod_dest_idx))) // default value
-        //         )   
-        //     ); 
-        //     break;
         default:
             paramList.add( 
                 std::make_unique<juce::AudioParameterFloat> (
@@ -207,12 +191,16 @@ static juce::AudioProcessorValueTreeState::ParameterLayout constructParameters()
     }
     for(size_t mod_source_idx=0; mod_source_idx<telegraph::Size<telegraph::ModSource>(); mod_source_idx++){
         for(size_t mod_dest_idx=0; mod_dest_idx<telegraph::Size<telegraph::ModDestination>(); mod_dest_idx++){
-            std::string parameter_id = std::string(TokenName<telegraph::ModSource>(telegraph::ModSource(mod_source_idx)) )
-                                        + "_to_" 
-                                        + std::string(telegraph::TokenName<telegraph::ModDestination>(telegraph::ModDestination(mod_dest_idx)));
+            std::string parameter_id = telegraph::composeModulationMappingTokenName(mod_source_idx, mod_dest_idx);
             std::string parameter_name = std::string(telegraph::DisplayName<telegraph::ModSource>(telegraph::ModSource(mod_source_idx)))
                                         + " to "
                                         + std::string(telegraph::DisplayName<telegraph::ModDestination>(telegraph::ModDestination(mod_dest_idx)));
+            
+            // auto defaultValue=0;
+            // if((telegraph::ModSource(mod_source_idx)==telegraph::ModSource::VELOCITY) && (telegraph::ModDestination(mod_dest_idx)==telegraph::ModDestination::GAIN)){
+            //     defaultValue = 0.8;
+            // }
+            
             paramList.add( 
                 std::make_unique<juce::AudioParameterFloat> (
                     parameter_id, // parameterID
@@ -283,9 +271,7 @@ parameters (*this, nullptr, juce::Identifier ("Telegraph"), constructParameters(
     lfo_two_speed = parameters.getRawParameterValue(TokenName<ModDestination>(ModDestination::LFO_TWO_SPEED));
     for(size_t source_idx=0; source_idx<telegraph::Size<telegraph::ModSource>(); source_idx++){
         for(size_t dest_idx=0; dest_idx<telegraph::Size<telegraph::ModDestination>(); dest_idx++){
-            std::string parameter_id = std::string(TokenName<telegraph::ModSource>(telegraph::ModSource(source_idx))) 
-                                        + "_to_" 
-                                        + std::string(telegraph::TokenName<telegraph::ModDestination>(telegraph::ModDestination(dest_idx)));
+            std::string parameter_id = telegraph::composeModulationMappingTokenName(source_idx, dest_idx);
             mod_matrix[source_idx][dest_idx] = parameters.getRawParameterValue(parameter_id);
         }
     }
@@ -507,12 +493,8 @@ void TelegraphAudioProcessor::updateSynthParams(){
     using algae::dsp::core::units::dbtorms;
     params.wave_mode = telegraph::lookup_safe<telegraph::Wave>(*exciter_waveform, {telegraph::Wave::SINE,telegraph::Wave::SAW,telegraph::Wave::SQUARE});
 
-    params.feedback_mode = telegraph::lookup_safe<telegraph::FeedbackMode>(*resonator_type, {telegraph::FeedbackMode::COS, telegraph::FeedbackMode::WRAP, telegraph::FeedbackMode::TANH, telegraph::FeedbackMode::CLIP, telegraph::FeedbackMode::LOWERED_BELL});
+    params.feedback_mode = telegraph::lookup_safe<telegraph::FeedbackMode>(*resonator_type, {telegraph::FeedbackMode::COS, telegraph::FeedbackMode::WRAP, telegraph::FeedbackMode::TANH/*, telegraph::FeedbackMode::CLIP, telegraph::FeedbackMode::LOWERED_BELL*/});
 
-    // using telegraph::ModDestination;
-    // for(size_t mod_dest_idx=0; mod_dest_idx<telegraph::Size<ModDestination>(); mod_dest_idx++){
-    //     params.modulatable_params[mod_dest_idx] = 
-    // }
     params.modulatable_params[static_cast<size_t>(ModDestination::EXCITER_GAIN)] = *exciter_gain;
     params.modulatable_params[static_cast<size_t>(ModDestination::EXCITER_FREQ)] = *exciter_pitch;
     params.modulatable_params[static_cast<size_t>(ModDestination::RESONATOR_Q)] = *resonator_q;
