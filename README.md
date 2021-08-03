@@ -1,6 +1,7 @@
 # telegraph
 a chaotic resonance synthesizer
 
+telegraph makes ringing oscillations that hiss, warble, and stutter. It can make beautiful distorted tones that sound a bit like badly treated cassette tape. It is also capable of wild, out of control noise. I hope you enjoy it!
 
 # build
 
