@@ -7,7 +7,7 @@ a chaotic resonance synthesizer
 ## install gtest and cmake
 ### linux:
 ```
-sudo apt-get install cmake libgtest-dev
+sudo apt-get install cmake libgtest-dev libx11-dev libfreetype6-dev libxcb-util-dev libxcb-cursor-dev libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev libgtkmm-3.0-dev libsqlite3-dev libasound2-dev libjack-jackd2-dev
 cd /usr/src/gtest
 sudo cmake CMakeLists.txt
 sudo make

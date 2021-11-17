@@ -6,7 +6,7 @@ using algae::dsp::core::AudioBlock;
 using algae::dsp::core::StereoBlock;
 using algae::dsp::core::filter::process;
 using algae::dsp::core::filter::chaotic_resonator_t;
-using algae::dsp::core::filter::onepole_hip_t;
+using algae::dsp::core::filter::onepole_onezero_t;
 using algae::dsp::core::filter::hip;
 using algae::dsp::core::filter::update_coefficients;
 using algae::dsp::core::filter::biquad_t;
@@ -53,7 +53,7 @@ namespace telegraph {
             std::array<sample_t, MAX_UNISON> phi alignas(16)=std::array<sample_t, MAX_UNISON>();
         //};
         std::array<sample_t, Size<ModDestination>()> parameter_values;
-        std::array<onepole_hip_t<sample_t>, 2> highpass_state alignas(16);
+        std::array<onepole_onezero_t<sample_t>, 2> highpass_state alignas(16);
         std::array<biquad_t<sample_t>, 2> lowpass_state alignas(16);
         modulators_t<sample_t> modulators = modulators_t<sample_t>();
         // frequency_t frequency alignas(16);        //audio
@@ -268,7 +268,7 @@ namespace telegraph {
             
             output[stereo_idx] *= /*0.25**/v.parameter_values[static_cast<size_t>(ModDestination::GAIN)];
 
-            std::tie(v.highpass_state[stereo_idx], output[stereo_idx]) = process<sample_t, frequency_t>(v.highpass_state[stereo_idx], output[stereo_idx]);
+            std::tie(v.highpass_state[stereo_idx], output[stereo_idx]) = process<sample_t>(v.highpass_state[stereo_idx], output[stereo_idx]);
             
             std::tie(v.lowpass_state[stereo_idx], output[stereo_idx]) = process<sample_t>(v.lowpass_state[stereo_idx], output[stereo_idx]);
 
